@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
@@ -46,6 +47,8 @@ fun GraphScreen(
     
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(SearchFilter.ALL) }
+    var showCreateStartingNodeDialog by remember { mutableStateOf(false) }
+    var startingNodeName by remember { mutableStateOf("") }
 
     // Filter connectors for this graph
     val graphConnectors = remember(allConnectors, allNodes) {
@@ -123,9 +126,14 @@ fun GraphScreen(
                 item {
                     StartingNodeSection(
                         startingNode = graph.startingNode,
-                        onNavigateToNode = { nodeId ->
-                            onNavigateToNode(graphId, nodeId)
-                        }
+                        onClick = {
+                            if (graph.startingNode != null) {
+                                onNavigateToNode(graphId, graph.startingNode.id)
+                            } else {
+                                // Show create starting node dialog
+                                showCreateStartingNodeDialog = true
+                            }
+                        },
                     )
                 }
 
@@ -181,12 +189,50 @@ fun GraphScreen(
             CircularProgressIndicator()
         }
     }
+
+    // Create Starting Node Dialog
+    if (showCreateStartingNodeDialog) {
+        CreateStartingNodeDialog(
+            nodeName = startingNodeName,
+            onNodeNameChange = { startingNodeName = it },
+            onDismiss = {
+                showCreateStartingNodeDialog = false
+                startingNodeName = ""
+            },
+            onCreateNode = { name ->
+                // Create the starting node and set it as the graph's starting node
+                CoroutineScope(Dispatchers.IO).launch {
+                    val nodeId = repository.insertNode(
+                        app.pmsoft.graphwalker.data.entity.Node(
+                            graphId = graphId,
+                            name = name
+                        )
+                    )
+                    // Update the graph to set this as the starting node
+                    fullGraph?.let { fullGraphData ->
+                        val updatedGraph = app.pmsoft.graphwalker.data.entity.Graph(
+                            id = fullGraphData.id,
+                            name = fullGraphData.name,
+                            startingNodeId = nodeId,
+                            isDirected = fullGraphData.isDirected,
+                            hasEdgeWeights = fullGraphData.hasEdgeWeights,
+                            hasEdgeLabels = fullGraphData.hasEdgeLabels,
+                            hasConnectors = fullGraphData.hasConnectors
+                        )
+                        repository.updateGraph(updatedGraph)
+                    }
+                }
+                showCreateStartingNodeDialog = false
+                startingNodeName = ""
+            }
+        )
+    }
 }
 
 @Composable
 private fun StartingNodeSection(
     startingNode: Node?,
-    onNavigateToNode: (Long) -> Unit
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -205,7 +251,7 @@ private fun StartingNodeSection(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onNavigateToNode(startingNode.id) },
+                        .clickable { onClick() },
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
@@ -227,11 +273,14 @@ private fun StartingNodeSection(
                     }
                 }
             } else {
-                Text(
-                    text = "No starting node set",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Button(
+                    onClick = onClick,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Create starting node")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Create Starting Node")
+                }
             }
         }
     }
@@ -495,4 +544,67 @@ sealed class SearchResult {
         val fromConnector: Connector?,
         val toConnector: Connector?
     ) : SearchResult()
+}
+
+@Composable
+private fun CreateStartingNodeDialog(
+    nodeName: String,
+    onNodeNameChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onCreateNode: (String) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Create Starting Node",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                
+                Text(
+                    text = "This graph needs a starting node to begin exploring.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                OutlinedTextField(
+                    value = nodeName,
+                    onValueChange = onNodeNameChange,
+                    label = { Text("Node Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = {
+                            if (nodeName.isNotBlank()) {
+                                onCreateNode(nodeName.trim())
+                            }
+                        },
+                        enabled = nodeName.isNotBlank()
+                    ) {
+                        Text("Create")
+                    }
+                }
+            }
+        }
+    }
 }

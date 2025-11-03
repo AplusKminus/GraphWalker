@@ -50,7 +50,6 @@ fun NodeView(
         factory = NodeViewModelFactory(repository, fullGraph.id, nodeIdForViewModel)
     )
 
-    var showCreateNodeDialog by remember { mutableStateOf(false) }
     var showEditNodeDialog by remember { mutableStateOf(false) }
     var showContextMenu by remember { mutableStateOf(false) }
     var showAddTagDialog by remember { mutableStateOf(false) }
@@ -73,12 +72,6 @@ fun NodeView(
         }
     }
 
-    LaunchedEffect(currentNode, viewModelFullGraph) {
-        // Only show creation dialog if graph is loaded and there's genuinely no node to display
-        if (viewModelFullGraph != null && currentNode == null && targetNodeId == null) {
-            showCreateNodeDialog = true
-        }
-    }
 
     // Ensure default connector exists when hasConnectors is false
     LaunchedEffect(currentNode, viewModelFullGraph?.hasConnectors) {
@@ -192,60 +185,6 @@ fun NodeView(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
-            }
-        }
-    }
-
-    if (showCreateNodeDialog) {
-        Dialog(onDismissRequest = { }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Create Starting Node",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                    
-                    Text(
-                        text = "This graph needs a starting node to begin.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    OutlinedTextField(
-                        value = nodeName,
-                        onValueChange = { nodeName = it },
-                        label = { Text("Node Name") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = {
-                                if (nodeName.isNotBlank()) {
-                                    viewModel.createStartingNode(nodeName.trim())
-                                    showCreateNodeDialog = false
-                                    nodeName = ""
-                                }
-                            },
-                            enabled = nodeName.isNotBlank()
-                        ) {
-                            Text("Create")
-                        }
-                    }
-                }
             }
         }
     }
