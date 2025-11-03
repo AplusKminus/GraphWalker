@@ -4,15 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import app.pmsoft.graphwalker.repository.GraphRepository
 
-class NodeViewModelFactory(
+class ConnectorViewModelFactory(
     private val repository: GraphRepository,
-    private val graphId: Long,
-    private val nodeId: Long
+    private val connectorId: Long
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(NodeViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(ConnectorViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return NodeViewModel(repository, graphId, nodeId) as T
+            return ConnectorViewModel(repository, connectorId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

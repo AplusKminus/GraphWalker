@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 
 class NodeViewModel(
     private val repository: GraphRepository,
-    private val graphId: Long
+    private val graphId: Long,
+    private val nodeId: Long
 ) : ViewModel() {
     
     val fullGraph = repository.getFullGraphById(graphId)
@@ -24,15 +25,9 @@ class NodeViewModel(
             initialValue = null
         )
 
-    private val startingNodeId = fullGraph.map { it?.startingNode?.id }
-    
-    val connectors: StateFlow<List<Connector>> = startingNodeId
-        .combine(repository.getAllConnectors()) { nodeId, allConnectors ->
-            if (nodeId != null) {
-                allConnectors.filter { it.nodeId == nodeId }
-            } else {
-                emptyList()
-            }
+    val connectors: StateFlow<List<Connector>> = repository.getAllConnectors()
+        .map { allConnectors ->
+            allConnectors.filter { it.nodeId == nodeId }
         }
         .stateIn(
             scope = viewModelScope,

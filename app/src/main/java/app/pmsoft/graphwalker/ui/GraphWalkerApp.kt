@@ -45,6 +45,35 @@ fun GraphWalkerApp() {
                 graphId = graphId,
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onNavigateToConnector = { connectorId ->
+                    navController.navigate("connector_view/$connectorId")
+                }
+            )
+        }
+        composable("node_view/{graphId}/{nodeId}") { backStackEntry ->
+            val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
+            val nodeId = backStackEntry.arguments?.getString("nodeId")?.toLong() ?: return@composable
+            NodeViewScreen(
+                graphId = graphId,
+                nodeId = nodeId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToConnector = { connectorId ->
+                    navController.navigate("connector_view/$connectorId")
+                }
+            )
+        }
+        composable("connector_view/{connectorId}") { backStackEntry ->
+            val connectorId = backStackEntry.arguments?.getString("connectorId")?.toLong() ?: return@composable
+            ConnectorViewScreen(
+                connectorId = connectorId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToNode = { graphId, nodeId ->
+                    navController.navigate("node_view/$graphId/$nodeId")
                 }
             )
         }
@@ -207,7 +236,9 @@ fun GraphListScreen(
 @Composable
 fun NodeViewScreen(
     graphId: Long,
-    onNavigateBack: () -> Unit
+    nodeId: Long? = null,
+    onNavigateBack: () -> Unit,
+    onNavigateToConnector: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -223,7 +254,9 @@ fun NodeViewScreen(
     fullGraph?.let { graph ->
         NodeView(
             fullGraph = graph,
-            onNavigateBack = onNavigateBack
+            targetNodeId = nodeId,
+            onNavigateBack = onNavigateBack,
+            onNavigateToConnector = onNavigateToConnector
         )
     } ?: run {
         Box(
@@ -233,4 +266,17 @@ fun NodeViewScreen(
             CircularProgressIndicator()
         }
     }
+}
+
+@Composable
+fun ConnectorViewScreen(
+    connectorId: Long,
+    onNavigateBack: () -> Unit,
+    onNavigateToNode: (Long, Long) -> Unit = { _, _ -> }
+) {
+    ConnectorView(
+        connectorId = connectorId,
+        onNavigateBack = onNavigateBack,
+        onNavigateToNode = onNavigateToNode
+    )
 }

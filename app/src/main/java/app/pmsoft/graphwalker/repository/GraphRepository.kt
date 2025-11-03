@@ -37,6 +37,8 @@ class GraphRepository(
     
     fun getNodesByGraphId(graphId: Long): Flow<List<Node>> = nodeDao.getNodesByGraphId(graphId)
     
+    fun getAllNodes(): Flow<List<Node>> = nodeDao.getAllNodes()
+    
     fun getNodeById(id: Long): Flow<Node?> = nodeDao.getNodeById(id)
     
     fun getNodesByIds(ids: List<Long>): Flow<List<Node>> = nodeDao.getNodesByIds(ids)

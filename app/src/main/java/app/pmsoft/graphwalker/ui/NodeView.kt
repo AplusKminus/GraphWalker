@@ -30,7 +30,9 @@ import app.pmsoft.graphwalker.ui.viewmodel.NodeViewModelFactory
 @Composable
 fun NodeView(
     fullGraph: FullGraph,
-    onNavigateBack: () -> Unit
+    targetNodeId: Long? = null,
+    onNavigateBack: () -> Unit,
+    onNavigateToConnector: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -40,8 +42,10 @@ fun NodeView(
         database.connectorDao(),
         database.edgeDao()
     )
+    // Use targetNodeId if provided, otherwise use the starting node
+    val nodeIdForViewModel = targetNodeId ?: fullGraph.startingNode?.id ?: fullGraph.id
     val viewModel: NodeViewModel = viewModel(
-        factory = NodeViewModelFactory(repository, fullGraph.id)
+        factory = NodeViewModelFactory(repository, fullGraph.id, nodeIdForViewModel)
     )
 
     var showCreateNodeDialog by remember { mutableStateOf(false) }
@@ -59,8 +63,15 @@ fun NodeView(
     val connectors by viewModel.connectors.collectAsState()
     val edgeCounts by viewModel.edgeCounts.collectAsState()
 
-    LaunchedEffect(fullGraph.startingNode) {
-        if (fullGraph.startingNode == null) {
+    // Determine which node to display: targetNodeId takes precedence over starting node
+    val currentNode = remember(fullGraph, targetNodeId) {
+        targetNodeId?.let { nodeId ->
+            fullGraph.nodes.find { it.id == nodeId }
+        } ?: fullGraph.startingNode
+    }
+
+    LaunchedEffect(currentNode) {
+        if (currentNode == null) {
             showCreateNodeDialog = true
         }
     }
@@ -69,7 +80,7 @@ fun NodeView(
         topBar = {
             TopAppBar(
                 title = { 
-                    Text(fullGraph.startingNode?.name ?: "No Starting Node") 
+                    Text(currentNode?.name ?: "No Node") 
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -77,7 +88,7 @@ fun NodeView(
                     }
                 },
                 actions = {
-                    if (fullGraph.startingNode != null) {
+                    if (currentNode != null) {
                         Box {
                             IconButton(onClick = { showContextMenu = true }) {
                                 Icon(Icons.Default.MoreVert, contentDescription = "More options")
@@ -90,7 +101,7 @@ fun NodeView(
                                     text = { Text("Rename Node") },
                                     onClick = {
                                         showContextMenu = false
-                                        nodeName = fullGraph.startingNode?.name ?: ""
+                                        nodeName = currentNode?.name ?: ""
                                         showEditNodeDialog = true
                                     }
                                 )
@@ -101,7 +112,7 @@ fun NodeView(
             )
         }
     ) { paddingValues ->
-        if (fullGraph.startingNode != null) {
+        if (currentNode != null) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -111,7 +122,7 @@ fun NodeView(
             ) {
                 item {
                     TagsSection(
-                        tags = fullGraph.startingNode?.tags ?: emptyList(),
+                        tags = currentNode?.tags ?: emptyList(),
                         onAddTag = { showAddTagDialog = true },
                         onTagTap = { tag ->
                             selectedTag = tag
@@ -132,7 +143,8 @@ fun NodeView(
                 items(connectors) { connector ->
                     ConnectorItem(
                         connector = connector,
-                        edgeCount = edgeCounts[connector.id] ?: 0
+                        edgeCount = edgeCounts[connector.id] ?: 0,
+                        onClick = { onNavigateToConnector(connector.id) }
                     )
                 }
 
@@ -280,8 +292,8 @@ fun NodeView(
                         
                         Button(
                             onClick = {
-                                if (nodeName.isNotBlank() && fullGraph.startingNode != null) {
-                                    viewModel.updateNodeName(fullGraph.startingNode.id, nodeName.trim())
+                                if (nodeName.isNotBlank() && currentNode != null) {
+                                    viewModel.updateNodeName(currentNode.id, nodeName.trim())
                                     showEditNodeDialog = false
                                     nodeName = ""
                                 }
@@ -301,8 +313,8 @@ fun NodeView(
             newTag = newTag,
             onNewTagChange = { newTag = it },
             onAddTag = { tag ->
-                if (tag.isNotBlank() && fullGraph.startingNode != null) {
-                    viewModel.addTag(fullGraph.startingNode.id, tag.trim())
+                if (tag.isNotBlank() && currentNode != null) {
+                    viewModel.addTag(currentNode.id, tag.trim())
                     newTag = ""
                 }
             },
@@ -319,16 +331,16 @@ fun NodeView(
             editTag = tagToEdit,
             onEditTagChange = { tagToEdit = it },
             onUpdateTag = { oldTag, newTag ->
-                if (newTag.isNotBlank() && fullGraph.startingNode != null) {
-                    viewModel.updateTag(fullGraph.startingNode.id, oldTag, newTag.trim())
+                if (newTag.isNotBlank() && currentNode != null) {
+                    viewModel.updateTag(currentNode.id, oldTag, newTag.trim())
                 }
                 showTagContextMenu = false
                 selectedTag = ""
                 tagToEdit = ""
             },
             onDeleteTag = { tag ->
-                if (fullGraph.startingNode != null) {
-                    viewModel.removeTag(fullGraph.startingNode.id, tag)
+                if (currentNode != null) {
+                    viewModel.removeTag(currentNode.id, tag)
                 }
                 showTagContextMenu = false
                 selectedTag = ""
@@ -388,8 +400,8 @@ fun NodeView(
                         
                         Button(
                             onClick = {
-                                if (newConnectorName.isNotBlank() && fullGraph.startingNode != null) {
-                                    viewModel.addConnector(fullGraph.startingNode.id, newConnectorName.trim())
+                                if (newConnectorName.isNotBlank() && currentNode != null) {
+                                    viewModel.addConnector(currentNode.id, newConnectorName.trim())
                                     showAddConnectorDialog = false
                                     newConnectorName = ""
                                 }
@@ -583,10 +595,12 @@ fun TagContextMenuDialog(
 @Composable
 fun ConnectorItem(
     connector: Connector,
-    edgeCount: Int
+    edgeCount: Int,
+    onClick: () -> Unit = {}
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier
