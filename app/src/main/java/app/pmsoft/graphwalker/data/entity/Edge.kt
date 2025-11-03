@@ -28,5 +28,5 @@ data class Edge(
     val toConnectorId: Long,
     val bidirectional: Boolean,
     val name: String,
-    val weight: Double = 0.0
+    val weight: Double = 1.0
 )

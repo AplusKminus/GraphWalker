@@ -55,6 +55,7 @@ fun ConnectorView(
     val connectedConnectors by viewModel.connectedConnectors.collectAsState()
     val targetNodeIds by viewModel.targetNodeIds.collectAsState()
     val currentNode by viewModel.currentNode.collectAsState()
+    val graph by viewModel.graph.collectAsState()
     
     var showAddEdgeView by remember { mutableStateOf(false) }
 
@@ -94,6 +95,7 @@ fun ConnectorView(
                             edge = edge,
                             connectedConnectorName = connectedConnectors[edge.id] ?: "Unknown",
                             currentConnectorId = connectorId,
+                            showWeight = graph?.hasEdgeWeights == true,
                             onNavigateToNode = {
                                 val targetNodeId = targetNodeIds[edge.id]
                                 val graphId = currentNode?.graphId
@@ -167,6 +169,7 @@ fun EdgeItem(
     edge: Edge,
     connectedConnectorName: String,
     currentConnectorId: Long,
+    showWeight: Boolean = false,
     onNavigateToNode: () -> Unit = {}
 ) {
     Card(
@@ -203,7 +206,7 @@ fun EdgeItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
-            if (edge.weight != 0.0) {
+            if (showWeight) {
                 Text(
                     text = "Weight: ${edge.weight}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -230,8 +233,10 @@ fun AddEdgeView(
         database.edgeDao()
     )
     
+    val graph by viewModel.graph.collectAsState()
+    
     var edgeName by remember { mutableStateOf("") }
-    var weight by remember { mutableStateOf("0.0") }
+    var weight by remember { mutableStateOf("1.0") }
     var bidirectional by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     var selectedConnector by remember { mutableStateOf<Connector?>(null) }
@@ -290,36 +295,42 @@ fun AddEdgeView(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                OutlinedTextField(
-                    value = edgeName,
-                    onValueChange = { edgeName = it },
-                    label = { Text("Edge Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-            
-            item {
-                OutlinedTextField(
-                    value = weight,
-                    onValueChange = { weight = it },
-                    label = { Text("Weight") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
-            }
-            
-            item {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = bidirectional,
-                        onCheckedChange = { bidirectional = it }
+            if (graph?.hasEdgeLabels == true) {
+                item {
+                    OutlinedTextField(
+                        value = edgeName,
+                        onValueChange = { edgeName = it },
+                        label = { Text("Edge Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
-                    Text("Bidirectional")
+                }
+            }
+            
+            if (graph?.hasEdgeWeights == true) {
+                item {
+                    OutlinedTextField(
+                        value = weight,
+                        onValueChange = { weight = it },
+                        label = { Text("Weight") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                }
+            }
+            
+            if (graph?.isDirected == true) {
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = bidirectional,
+                            onCheckedChange = { bidirectional = it }
+                        )
+                        Text("Bidirectional")
+                    }
                 }
             }
             
@@ -508,8 +519,22 @@ fun AddEdgeView(
                 item {
                     Button(
                         onClick = {
-                            val weightValue = weight.toDoubleOrNull() ?: 0.0
-                            onCreateEdge(selectedConnector!!.id, edgeName, weightValue, bidirectional)
+                            val weightValue = if (graph?.hasEdgeWeights == true) {
+                                weight.toDoubleOrNull() ?: 1.0
+                            } else {
+                                1.0
+                            }
+                            val bidirectionalValue = if (graph?.isDirected == false) {
+                                true  // Force bidirectional for undirected graphs
+                            } else {
+                                bidirectional  // Use checkbox value for directed graphs
+                            }
+                            val edgeNameValue = if (graph?.hasEdgeLabels == true) {
+                                edgeName
+                            } else {
+                                ""  // Empty name when labels are disabled
+                            }
+                            onCreateEdge(selectedConnector!!.id, edgeNameValue, weightValue, bidirectionalValue)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = selectedConnector != null

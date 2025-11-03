@@ -20,16 +20,36 @@ class GraphListViewModel(
             initialValue = emptyList()
         )
 
-    fun createNewGraph(name: String) {
+    fun createNewGraph(
+        name: String,
+        isDirected: Boolean = true,
+        hasEdgeWeights: Boolean = false,
+        hasEdgeLabels: Boolean = false,
+        hasConnectors: Boolean = false
+    ) {
         viewModelScope.launch {
-            val newGraph = Graph(name = name)
+            val newGraph = Graph(
+                name = name,
+                isDirected = isDirected,
+                hasEdgeWeights = hasEdgeWeights,
+                hasEdgeLabels = hasEdgeLabels,
+                hasConnectors = hasConnectors
+            )
             repository.insertGraph(newGraph)
         }
     }
 
     fun deleteGraph(fullGraph: FullGraph) {
         viewModelScope.launch {
-            val graph = Graph(id = fullGraph.id, name = fullGraph.name, startingNodeId = fullGraph.startingNode?.id)
+            val graph = Graph(
+                id = fullGraph.id,
+                name = fullGraph.name,
+                startingNodeId = fullGraph.startingNode?.id,
+                isDirected = fullGraph.isDirected,
+                hasEdgeWeights = fullGraph.hasEdgeWeights,
+                hasEdgeLabels = fullGraph.hasEdgeLabels,
+                hasConnectors = fullGraph.hasConnectors
+            )
             repository.deleteGraph(graph)
         }
     }

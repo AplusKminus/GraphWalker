@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.pmsoft.graphwalker.data.entity.Connector
 import app.pmsoft.graphwalker.data.entity.Edge
+import app.pmsoft.graphwalker.data.entity.Graph
 import app.pmsoft.graphwalker.data.entity.Node
 import app.pmsoft.graphwalker.repository.GraphRepository
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,18 @@ class ConnectorViewModel(
         .combine(repository.getAllNodes()) { currentConnector, allNodes ->
             if (currentConnector != null) {
                 allNodes.find { it.id == currentConnector.nodeId }
+            } else null
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+    
+    val graph = currentNode
+        .combine(repository.getAllGraphs()) { node, allGraphs ->
+            if (node != null) {
+                allGraphs.find { it.id == node.graphId }
             } else null
         }
         .stateIn(

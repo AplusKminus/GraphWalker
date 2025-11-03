@@ -7,7 +7,11 @@ data class FullGraph(
     val id: Long,
     val name: String,
     val nodes: List<Node>,
-    val startingNode: Node?
+    val startingNode: Node?,
+    val isDirected: Boolean = true,
+    val hasEdgeWeights: Boolean = false,
+    val hasEdgeLabels: Boolean = false,
+    val hasConnectors: Boolean = false
 ) {
     companion object {
         fun from(graph: Graph, nodes: List<Node>): FullGraph {
@@ -20,7 +24,11 @@ data class FullGraph(
                 id = graph.id,
                 name = graph.name,
                 nodes = nodes,
-                startingNode = startingNode
+                startingNode = startingNode,
+                isDirected = graph.isDirected,
+                hasEdgeWeights = graph.hasEdgeWeights,
+                hasEdgeLabels = graph.hasEdgeLabels,
+                hasConnectors = graph.hasConnectors
             )
         }
     }

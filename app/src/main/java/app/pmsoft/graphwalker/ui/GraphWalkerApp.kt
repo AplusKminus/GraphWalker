@@ -99,6 +99,10 @@ fun GraphListScreen(
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var graphName by remember { mutableStateOf("") }
+    var isDirected by remember { mutableStateOf(true) }
+    var hasEdgeWeights by remember { mutableStateOf(false) }
+    var hasEdgeLabels by remember { mutableStateOf(false) }
+    var hasConnectors by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -147,6 +151,39 @@ fun GraphListScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (!fullGraph.isDirected) {
+                                Text(
+                                    text = "Undirected",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            if (fullGraph.hasEdgeWeights) {
+                                Text(
+                                    text = "Weighted",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            if (fullGraph.hasEdgeLabels) {
+                                Text(
+                                    text = "Labeled",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            if (fullGraph.hasConnectors) {
+                                Text(
+                                    text = "Connectors",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -174,6 +211,10 @@ fun GraphListScreen(
         Dialog(onDismissRequest = { 
             showCreateDialog = false
             graphName = ""
+            isDirected = true
+            hasEdgeWeights = false
+            hasEdgeLabels = false
+            hasConnectors = false
         }) {
             Card(
                 modifier = Modifier
@@ -198,6 +239,63 @@ fun GraphListScreen(
                         singleLine = true
                     )
                     
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Graph Configuration",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Directed Graph")
+                            Switch(
+                                checked = isDirected,
+                                onCheckedChange = { isDirected = it }
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Edge Weights")
+                            Switch(
+                                checked = hasEdgeWeights,
+                                onCheckedChange = { hasEdgeWeights = it }
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Edge Labels")
+                            Switch(
+                                checked = hasEdgeLabels,
+                                onCheckedChange = { hasEdgeLabels = it }
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Connectors")
+                            Switch(
+                                checked = hasConnectors,
+                                onCheckedChange = { hasConnectors = it }
+                            )
+                        }
+                    }
+                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
@@ -207,6 +305,10 @@ fun GraphListScreen(
                             onClick = {
                                 showCreateDialog = false
                                 graphName = ""
+                                isDirected = true
+                                hasEdgeWeights = false
+                                hasEdgeLabels = false
+                                hasConnectors = false
                             }
                         ) {
                             Text("Cancel")
@@ -217,9 +319,19 @@ fun GraphListScreen(
                         Button(
                             onClick = {
                                 if (graphName.isNotBlank()) {
-                                    viewModel.createNewGraph(graphName.trim())
+                                    viewModel.createNewGraph(
+                                        name = graphName.trim(),
+                                        isDirected = isDirected,
+                                        hasEdgeWeights = hasEdgeWeights,
+                                        hasEdgeLabels = hasEdgeLabels,
+                                        hasConnectors = hasConnectors
+                                    )
                                     showCreateDialog = false
                                     graphName = ""
+                                    isDirected = true
+                                    hasEdgeWeights = false
+                                    hasEdgeLabels = false
+                                    hasConnectors = false
                                 }
                             },
                             enabled = graphName.isNotBlank()

@@ -10,7 +10,7 @@ import app.pmsoft.graphwalker.data.entity.*
 
 @Database(
     entities = [Graph::class, Node::class, Connector::class, Edge::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -30,7 +30,7 @@ abstract class GraphWalkerDatabase : RoomDatabase() {
                     context.applicationContext,
                     GraphWalkerDatabase::class.java,
                     "graph_walker_database"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }

@@ -58,11 +58,7 @@ class NodeViewModel(
             // Get the current graph directly from repository to ensure we have the latest data
             val currentGraph = repository.getGraphById(graphId).first()
             if (currentGraph != null) {
-                val updatedGraph = Graph(
-                    id = currentGraph.id,
-                    name = currentGraph.name,
-                    startingNodeId = nodeId
-                )
+                val updatedGraph = currentGraph.copy(startingNodeId = nodeId)
                 repository.updateGraph(updatedGraph)
             }
         }
