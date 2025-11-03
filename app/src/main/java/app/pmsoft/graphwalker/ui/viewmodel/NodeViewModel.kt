@@ -82,4 +82,40 @@ class NodeViewModel(
             }
         }
     }
+
+    fun addTag(nodeId: Long, tag: String) {
+        viewModelScope.launch {
+            val currentFullGraph = fullGraph.value
+            val nodeToUpdate = currentFullGraph?.nodes?.find { it.id == nodeId }
+            if (nodeToUpdate != null && !nodeToUpdate.tags.contains(tag)) {
+                val updatedTags = nodeToUpdate.tags + tag
+                val updatedNode = nodeToUpdate.copy(tags = updatedTags)
+                repository.updateNode(updatedNode)
+            }
+        }
+    }
+
+    fun removeTag(nodeId: Long, tag: String) {
+        viewModelScope.launch {
+            val currentFullGraph = fullGraph.value
+            val nodeToUpdate = currentFullGraph?.nodes?.find { it.id == nodeId }
+            if (nodeToUpdate != null) {
+                val updatedTags = nodeToUpdate.tags.filter { it != tag }
+                val updatedNode = nodeToUpdate.copy(tags = updatedTags)
+                repository.updateNode(updatedNode)
+            }
+        }
+    }
+
+    fun updateTag(nodeId: Long, oldTag: String, newTag: String) {
+        viewModelScope.launch {
+            val currentFullGraph = fullGraph.value
+            val nodeToUpdate = currentFullGraph?.nodes?.find { it.id == nodeId }
+            if (nodeToUpdate != null && !nodeToUpdate.tags.contains(newTag)) {
+                val updatedTags = nodeToUpdate.tags.map { if (it == oldTag) newTag else it }
+                val updatedNode = nodeToUpdate.copy(tags = updatedTags)
+                repository.updateNode(updatedNode)
+            }
+        }
+    }
 }
