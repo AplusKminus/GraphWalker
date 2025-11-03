@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,6 +59,10 @@ fun ConnectorView(
     val graph by viewModel.graph.collectAsState()
     
     var showAddEdgeView by remember { mutableStateOf(false) }
+    var showContextMenu by remember { mutableStateOf(false) }
+    var showEditDeleteDialog by remember { mutableStateOf(false) }
+    var newConnectorName by remember { mutableStateOf("") }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -68,6 +73,28 @@ fun ConnectorView(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (connector != null) {
+                        Box {
+                            IconButton(onClick = { showContextMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                            }
+                            DropdownMenu(
+                                expanded = showContextMenu,
+                                onDismissRequest = { showContextMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Edit / Delete") },
+                                    onClick = {
+                                        showContextMenu = false
+                                        newConnectorName = connector?.name ?: ""
+                                        showEditDeleteDialog = true
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             )
@@ -160,6 +187,127 @@ fun ConnectorView(
                 showAddEdgeView = false
             }
         )
+    }
+    
+    // Combined edit/delete dialog
+    if (showEditDeleteDialog) {
+        Dialog(onDismissRequest = { 
+            showEditDeleteDialog = false
+            newConnectorName = ""
+            showDeleteConfirmation = false
+        }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (!showDeleteConfirmation) {
+                        // Edit mode
+                        Text(
+                            text = "Edit Connector",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                        
+                        OutlinedTextField(
+                            value = newConnectorName,
+                            onValueChange = { newConnectorName = it },
+                            label = { Text("Connector Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { showDeleteConfirmation = true },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Delete")
+                            }
+                            
+                            Row {
+                                TextButton(
+                                    onClick = {
+                                        showEditDeleteDialog = false
+                                        newConnectorName = ""
+                                    }
+                                ) {
+                                    Text("Cancel")
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Button(
+                                    onClick = {
+                                        val currentConnector = connector
+                                        if (newConnectorName.isNotBlank() && currentConnector != null) {
+                                            viewModel.updateConnectorName(currentConnector.id, newConnectorName.trim())
+                                            showEditDeleteDialog = false
+                                            newConnectorName = ""
+                                        }
+                                    },
+                                    enabled = newConnectorName.isNotBlank()
+                                ) {
+                                    Text("Save")
+                                }
+                            }
+                        }
+                    } else {
+                        // Delete confirmation mode
+                        Text(
+                            text = "Delete Connector",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                        
+                        Text(
+                            text = "Are you sure you want to delete '${connector?.name}'? This will also delete all associated edges.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { showDeleteConfirmation = false }
+                            ) {
+                                Text("Cancel")
+                            }
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            Button(
+                                onClick = {
+                                    val currentConnector = connector
+                                    if (currentConnector != null) {
+                                        viewModel.deleteConnector(currentConnector.id)
+                                        showEditDeleteDialog = false
+                                        showDeleteConfirmation = false
+                                        onNavigateBack() // Navigate back after deletion
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Delete")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

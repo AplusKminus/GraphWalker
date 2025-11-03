@@ -136,4 +136,23 @@ class ConnectorViewModel(
         val connectorId = repository.insertConnector(Connector(nodeId = nodeId, name = connectorName))
         return connectorId
     }
+    
+    fun updateConnectorName(@Suppress("UNUSED_PARAMETER") connectorId: Long, newName: String) {
+        viewModelScope.launch {
+            val currentConnector = connector.value
+            if (currentConnector != null) {
+                val updatedConnector = currentConnector.copy(name = newName)
+                repository.updateConnector(updatedConnector)
+            }
+        }
+    }
+    
+    fun deleteConnector(@Suppress("UNUSED_PARAMETER") connectorId: Long) {
+        viewModelScope.launch {
+            val currentConnector = connector.value
+            if (currentConnector != null) {
+                repository.deleteConnector(currentConnector)
+            }
+        }
+    }
 }

@@ -26,13 +26,10 @@ class NodeViewModel(
             initialValue = null
         )
 
-    val connectors: StateFlow<List<Connector>> = repository.getAllConnectors()
-        .map { allConnectors ->
-            allConnectors.filter { it.nodeId == nodeId }
-        }
+    val connectors: StateFlow<List<Connector>> = repository.getConnectorsByNodeId(nodeId)
         .stateIn(
             scope = viewModelScope,
-            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+            started = kotlinx.coroutines.flow.SharingStarted.Lazily,
             initialValue = emptyList()
         )
 
@@ -47,7 +44,7 @@ class NodeViewModel(
         }
         .stateIn(
             scope = viewModelScope,
-            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+            started = kotlinx.coroutines.flow.SharingStarted.Lazily,
             initialValue = emptyMap()
         )
 
