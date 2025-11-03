@@ -7,3 +7,6 @@ local.properties
 
 # macOS
 .DS_Store
+
+# Claude Code settings
+.claude/
