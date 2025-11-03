@@ -1,12 +1,10 @@
 package app.pmsoft.graphwalker.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -53,12 +51,10 @@ fun NodeView(
     var showContextMenu by remember { mutableStateOf(false) }
     var showAddTagDialog by remember { mutableStateOf(false) }
     var showTagContextMenu by remember { mutableStateOf(false) }
-    var showAddConnectorDialog by remember { mutableStateOf(false) }
     var selectedTag by remember { mutableStateOf("") }
     var tagToEdit by remember { mutableStateOf("") }
     var nodeName by remember { mutableStateOf("") }
     var newTag by remember { mutableStateOf("") }
-    var newConnectorName by remember { mutableStateOf("") }
 
     val connectors by viewModel.connectors.collectAsState()
     val edgeCounts by viewModel.edgeCounts.collectAsState()
@@ -133,51 +129,14 @@ fun NodeView(
                 }
                 
                 item {
-                    Text(
-                        text = "Connectors",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-
-                items(connectors) { connector ->
-                    ConnectorItem(
-                        connector = connector,
-                        edgeCount = edgeCounts[connector.id] ?: 0,
-                        onClick = { onNavigateToConnector(connector.id) }
-                    )
-                }
-
-                item {
-                    OutlinedButton(
-                        onClick = { showAddConnectorDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add connector",
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Connector")
-                    }
-                }
-
-                if (connectors.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No connectors yet. Tap 'Add Connector' to create one.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    ConnectorsSection(
+                        connectors = connectors,
+                        edgeCounts = edgeCounts,
+                        onNavigateToConnector = onNavigateToConnector,
+                        onConnectorCreated = { connectorName ->
+                            viewModel.addConnector(currentNode.id, connectorName)
                         }
-                    }
+                    )
                 }
             }
         } else {
@@ -354,68 +313,8 @@ fun NodeView(
         )
     }
 
-    if (showAddConnectorDialog) {
-        Dialog(onDismissRequest = { 
-            showAddConnectorDialog = false
-            newConnectorName = ""
-        }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Add Connector",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                    
-                    OutlinedTextField(
-                        value = newConnectorName,
-                        onValueChange = { newConnectorName = it },
-                        label = { Text("Connector Name") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = {
-                                showAddConnectorDialog = false
-                                newConnectorName = ""
-                            }
-                        ) {
-                            Text("Cancel")
-                        }
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Button(
-                            onClick = {
-                                if (newConnectorName.isNotBlank() && currentNode != null) {
-                                    viewModel.addConnector(currentNode.id, newConnectorName.trim())
-                                    showAddConnectorDialog = false
-                                    newConnectorName = ""
-                                }
-                            },
-                            enabled = newConnectorName.isNotBlank()
-                        ) {
-                            Text("Add")
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
+
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
