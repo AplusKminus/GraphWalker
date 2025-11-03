@@ -118,4 +118,11 @@ class NodeViewModel(
             }
         }
     }
+
+    fun addConnector(nodeId: Long, connectorName: String) {
+        viewModelScope.launch {
+            val newConnector = Connector(nodeId = nodeId, name = connectorName)
+            repository.insertConnector(newConnector)
+        }
+    }
 }

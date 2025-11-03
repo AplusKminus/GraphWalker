@@ -49,10 +49,12 @@ fun NodeView(
     var showContextMenu by remember { mutableStateOf(false) }
     var showAddTagDialog by remember { mutableStateOf(false) }
     var showTagContextMenu by remember { mutableStateOf(false) }
+    var showAddConnectorDialog by remember { mutableStateOf(false) }
     var selectedTag by remember { mutableStateOf("") }
     var tagToEdit by remember { mutableStateOf("") }
     var nodeName by remember { mutableStateOf("") }
     var newTag by remember { mutableStateOf("") }
+    var newConnectorName by remember { mutableStateOf("") }
 
     val connectors by viewModel.connectors.collectAsState()
     val edgeCounts by viewModel.edgeCounts.collectAsState()
@@ -134,6 +136,21 @@ fun NodeView(
                     )
                 }
 
+                item {
+                    OutlinedButton(
+                        onClick = { showAddConnectorDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add connector",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Connector")
+                    }
+                }
+
                 if (connectors.isEmpty()) {
                     item {
                         Box(
@@ -143,7 +160,7 @@ fun NodeView(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No connectors yet.",
+                                text = "No connectors yet. Tap 'Add Connector' to create one.",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -323,6 +340,68 @@ fun NodeView(
                 tagToEdit = ""
             }
         )
+    }
+
+    if (showAddConnectorDialog) {
+        Dialog(onDismissRequest = { 
+            showAddConnectorDialog = false
+            newConnectorName = ""
+        }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Add Connector",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    
+                    OutlinedTextField(
+                        value = newConnectorName,
+                        onValueChange = { newConnectorName = it },
+                        label = { Text("Connector Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = {
+                                showAddConnectorDialog = false
+                                newConnectorName = ""
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Button(
+                            onClick = {
+                                if (newConnectorName.isNotBlank() && fullGraph.startingNode != null) {
+                                    viewModel.addConnector(fullGraph.startingNode.id, newConnectorName.trim())
+                                    showAddConnectorDialog = false
+                                    newConnectorName = ""
+                                }
+                            },
+                            enabled = newConnectorName.isNotBlank()
+                        ) {
+                            Text("Add")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -509,26 +588,32 @@ fun ConnectorItem(
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = connector.name,
                     style = MaterialTheme.typography.titleMedium
                 )
             }
             
-            Badge {
-                Text(
-                    text = edgeCount.toString(),
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
+            Text(
+                text = when (edgeCount) {
+                    0 -> "No connected edges"
+                    1 -> "1 connected edge"
+                    else -> "$edgeCount connected edges"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
