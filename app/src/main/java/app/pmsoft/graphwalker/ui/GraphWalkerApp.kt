@@ -66,6 +66,9 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToAddEdge = { connectorId ->
                     navController.navigate("add_edge/$connectorId")
+                },
+                onNavigateToGraphOverview = {
+                    navController.popBackStack("graph_view/$graphId", inclusive = false)
                 }
             )
         }
@@ -83,6 +86,9 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToAddEdge = { connectorId ->
                     navController.navigate("add_edge/$connectorId")
+                },
+                onNavigateToGraphOverview = {
+                    navController.popBackStack("graph_view/$graphId", inclusive = false)
                 }
             )
         }
@@ -98,6 +104,10 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToAddEdge = { connectorId ->
                     navController.navigate("add_edge/$connectorId")
+                },
+                onNavigateToGraphOverview = {
+                    // Navigate back to graph list (we don't know which graph this connector belongs to)
+                    navController.popBackStack("graph_list", inclusive = false)
                 }
             )
         }
@@ -107,6 +117,10 @@ fun GraphWalkerApp() {
                 connectorId = connectorId,
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onNavigateToGraphOverview = {
+                    // Navigate back to graph list (we don't know which graph this connector belongs to)
+                    navController.popBackStack("graph_list", inclusive = false)
                 }
             )
         }
@@ -384,7 +398,8 @@ fun NodeViewScreen(
     nodeId: Long? = null,
     onNavigateBack: () -> Unit,
     onNavigateToConnector: (Long) -> Unit = {},
-    onNavigateToAddEdge: (Long) -> Unit = {}
+    onNavigateToAddEdge: (Long) -> Unit = {},
+    onNavigateToGraphOverview: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -403,7 +418,8 @@ fun NodeViewScreen(
             targetNodeId = nodeId,
             onNavigateBack = onNavigateBack,
             onNavigateToConnector = onNavigateToConnector,
-            onNavigateToAddEdge = onNavigateToAddEdge
+            onNavigateToAddEdge = onNavigateToAddEdge,
+            onNavigateToGraphOverview = onNavigateToGraphOverview
         )
     } ?: run {
         Box(

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,7 +33,8 @@ fun NodeView(
     targetNodeId: Long? = null,
     onNavigateBack: () -> Unit,
     onNavigateToConnector: (Long) -> Unit = {},
-    onNavigateToAddEdge: (Long) -> Unit = {}
+    onNavigateToAddEdge: (Long) -> Unit = {},
+    onNavigateToGraphOverview: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -105,6 +107,12 @@ fun NodeView(
                     }
                 },
                 actions = {
+                    // Always show Graph Overview button first (highest priority)
+                    IconButton(onClick = onNavigateToGraphOverview) {
+                        Icon(Icons.Default.Home, contentDescription = "Graph Overview")
+                    }
+                    
+                    // Show context menu only if there's a current node
                     if (currentNode != null) {
                         Box {
                             IconButton(onClick = { showContextMenu = true }) {

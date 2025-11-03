@@ -3,6 +3,7 @@ package app.pmsoft.graphwalker.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +20,8 @@ fun ConnectorScreen(
     connectorId: Long,
     onNavigateBack: () -> Unit,
     onNavigateToNode: (Long, Long) -> Unit = { _, _ -> },
-    onNavigateToAddEdge: (Long) -> Unit = {}
+    onNavigateToAddEdge: (Long) -> Unit = {},
+    onNavigateToGraphOverview: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -50,6 +52,12 @@ fun ConnectorScreen(
                     }
                 },
                 actions = {
+                    // Always show Graph Overview button first (highest priority)
+                    IconButton(onClick = onNavigateToGraphOverview) {
+                        Icon(Icons.Default.Home, contentDescription = "Graph Overview")
+                    }
+                    
+                    // Show context menu only if there's a connector
                     if (connector != null) {
                         Box {
                             IconButton(onClick = { showContextMenu = true }) {

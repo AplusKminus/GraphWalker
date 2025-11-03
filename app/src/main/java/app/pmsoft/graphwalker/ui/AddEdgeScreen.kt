@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,7 +35,8 @@ import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModelFactory
 @Composable
 fun AddEdgeScreen(
     connectorId: Long,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToGraphOverview: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -99,6 +101,12 @@ fun AddEdgeScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    // Always show Graph Overview button (only action, so never overflows)
+                    IconButton(onClick = onNavigateToGraphOverview) {
+                        Icon(Icons.Default.Home, contentDescription = "Graph Overview")
                     }
                 }
             )
