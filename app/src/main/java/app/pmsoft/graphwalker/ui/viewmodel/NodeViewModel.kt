@@ -8,6 +8,7 @@ import app.pmsoft.graphwalker.data.entity.Node
 import app.pmsoft.graphwalker.repository.GraphRepository
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -54,12 +55,12 @@ class NodeViewModel(
         viewModelScope.launch {
             val nodeId = repository.insertNode(Node(graphId = graphId, name = name))
             
-            // Get the current graph to preserve its name
-            val currentFullGraph = fullGraph.value
-            if (currentFullGraph != null) {
+            // Get the current graph directly from repository to ensure we have the latest data
+            val currentGraph = repository.getGraphById(graphId).first()
+            if (currentGraph != null) {
                 val updatedGraph = Graph(
-                    id = currentFullGraph.id,
-                    name = currentFullGraph.name,
+                    id = currentGraph.id,
+                    name = currentGraph.name,
                     startingNodeId = nodeId
                 )
                 repository.updateGraph(updatedGraph)
