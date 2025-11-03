@@ -67,7 +67,7 @@ fun GraphWalkerApp() {
         }
         composable("connector_view/{connectorId}") { backStackEntry ->
             val connectorId = backStackEntry.arguments?.getString("connectorId")?.toLong() ?: return@composable
-            ConnectorViewScreen(
+            ConnectorScreen(
                 connectorId = connectorId,
                 onNavigateBack = {
                     navController.popBackStack()
@@ -378,17 +378,4 @@ fun NodeViewScreen(
             CircularProgressIndicator()
         }
     }
-}
-
-@Composable
-fun ConnectorViewScreen(
-    connectorId: Long,
-    onNavigateBack: () -> Unit,
-    onNavigateToNode: (Long, Long) -> Unit = { _, _ -> }
-) {
-    ConnectorView(
-        connectorId = connectorId,
-        onNavigateBack = onNavigateBack,
-        onNavigateToNode = onNavigateToNode
-    )
 }

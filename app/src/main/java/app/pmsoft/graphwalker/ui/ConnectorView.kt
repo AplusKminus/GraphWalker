@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -27,154 +25,115 @@ import kotlinx.coroutines.launch
 import app.pmsoft.graphwalker.data.GraphWalkerDatabase
 import app.pmsoft.graphwalker.data.entity.Connector
 import app.pmsoft.graphwalker.data.entity.Edge
+import app.pmsoft.graphwalker.data.entity.Graph
 import app.pmsoft.graphwalker.data.entity.Node
 import app.pmsoft.graphwalker.repository.GraphRepository
 import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModel
-import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModelFactory
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectorView(
     connectorId: Long,
+    paddingValues: PaddingValues,
+    viewModel: ConnectorViewModel,
+    onNavigateToNode: (Long, Long) -> Unit,
     onNavigateBack: () -> Unit,
-    onNavigateToNode: (Long, Long) -> Unit = { _, _ -> }
+    triggerEditDelete: Boolean,
+    onEditDeleteHandled: () -> Unit
 ) {
-    val context = LocalContext.current
-    val database = GraphWalkerDatabase.getDatabase(context)
-    val repository = GraphRepository(
-        database.graphDao(),
-        database.nodeDao(),
-        database.connectorDao(),
-        database.edgeDao()
-    )
-    val viewModel: ConnectorViewModel = viewModel(
-        factory = ConnectorViewModelFactory(repository, connectorId)
-    )
-
+    val graph by viewModel.graph.collectAsState()
     val connector by viewModel.connector.collectAsState()
     val edges by viewModel.edges.collectAsState()
+    val currentNode by viewModel.currentNode.collectAsState()
     val connectedConnectors by viewModel.connectedConnectors.collectAsState()
     val targetNodeIds by viewModel.targetNodeIds.collectAsState()
-    val currentNode by viewModel.currentNode.collectAsState()
-    val graph by viewModel.graph.collectAsState()
-    
     var showAddEdgeView by remember { mutableStateOf(false) }
-    var showContextMenu by remember { mutableStateOf(false) }
     var showEditDeleteDialog by remember { mutableStateOf(false) }
     var newConnectorName by remember { mutableStateOf("") }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    
+    // Handle edit/delete trigger from parent
+    LaunchedEffect(triggerEditDelete) {
+        if (triggerEditDelete) {
+            newConnectorName = connector?.name ?: ""
+            showEditDeleteDialog = true
+            onEditDeleteHandled()
+        }
+    }
+    
+    if (connector != null) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                Text(
+                    text = "Connected Edges",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(connector?.name ?: "Connector") 
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (connector != null) {
-                        Box {
-                            IconButton(onClick = { showContextMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                            }
-                            DropdownMenu(
-                                expanded = showContextMenu,
-                                onDismissRequest = { showContextMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Edit / Delete") },
-                                    onClick = {
-                                        showContextMenu = false
-                                        newConnectorName = connector?.name ?: ""
-                                        showEditDeleteDialog = true
-                                    }
-                                )
+            if (edges.isNotEmpty()) {
+                items(edges) { edge ->
+                    EdgeItem(
+                        edge = edge,
+                        connectedConnectorName = connectedConnectors[edge.id] ?: "Unknown",
+                        currentConnectorId = connectorId,
+                        showWeight = graph?.hasEdgeWeights == true,
+                        onNavigateToNode = {
+                            val targetNodeId = targetNodeIds[edge.id]
+                            val graphId = currentNode?.graphId
+                            if (targetNodeId != null && targetNodeId != -1L && graphId != null) {
+                                onNavigateToNode(graphId, targetNodeId)
                             }
                         }
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        if (connector != null) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                    Text(
-                        text = "Connected Edges",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
+            }
 
-                if (edges.isNotEmpty()) {
-                    items(edges) { edge ->
-                        EdgeItem(
-                            edge = edge,
-                            connectedConnectorName = connectedConnectors[edge.id] ?: "Unknown",
-                            currentConnectorId = connectorId,
-                            showWeight = graph?.hasEdgeWeights == true,
-                            onNavigateToNode = {
-                                val targetNodeId = targetNodeIds[edge.id]
-                                val graphId = currentNode?.graphId
-                                if (targetNodeId != null && targetNodeId != -1L && graphId != null) {
-                                    onNavigateToNode(graphId, targetNodeId)
-                                }
-                            }
-                        )
-                    }
+            item {
+                OutlinedButton(
+                    onClick = { showAddEdgeView = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add edge",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Edge")
                 }
+            }
 
+            if (edges.isEmpty()) {
                 item {
-                    OutlinedButton(
-                        onClick = { showAddEdgeView = true },
-                        modifier = Modifier.fillMaxWidth()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add edge",
-                            modifier = Modifier.size(18.dp)
+                        Text(
+                            text = "No connected edges yet. Tap 'Add Edge' to create one.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Edge")
-                    }
-                }
-
-                if (edges.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No connected edges yet. Tap 'Add Edge' to create one.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
             }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
         }
     }
     
@@ -306,60 +265,6 @@ fun ConnectorView(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EdgeItem(
-    edge: Edge,
-    connectedConnectorName: String,
-    currentConnectorId: Long,
-    showWeight: Boolean = false,
-    onNavigateToNode: () -> Unit = {}
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onNavigateToNode
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (edge.name.isNotBlank()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = edge.name,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-            
-            val directionLabel = when {
-                edge.bidirectional -> "↔\uFE0F"
-                edge.fromConnectorId == currentConnectorId -> "➡\uFE0F"
-                else -> "⬅\uFE0F"
-            }
-            Text(
-                text = "$directionLabel $connectedConnectorName",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            if (showWeight) {
-                Text(
-                    text = "Weight: ${edge.weight}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -800,6 +705,60 @@ fun CreateNodeConnectorDialog(
                         Text("Create")
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EdgeItem(
+    edge: Edge,
+    connectedConnectorName: String,
+    currentConnectorId: Long,
+    showWeight: Boolean = false,
+    onNavigateToNode: () -> Unit = {}
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onNavigateToNode
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (edge.name.isNotBlank()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = edge.name,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
+
+            val directionLabel = when {
+                edge.bidirectional -> "↔️"
+                edge.fromConnectorId == currentConnectorId -> "➡️"
+                else -> "⬅️"
+            }
+            Text(
+                text = "$directionLabel $connectedConnectorName",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (showWeight) {
+                Text(
+                    text = "Weight: ${edge.weight}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
