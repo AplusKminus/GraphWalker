@@ -13,7 +13,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import app.pmsoft.graphwalker.data.GraphWalkerDatabase
+import app.pmsoft.graphwalker.data.model.FullGraph
 import app.pmsoft.graphwalker.repository.GraphRepository
 import app.pmsoft.graphwalker.ui.viewmodel.GraphListViewModel
 import app.pmsoft.graphwalker.ui.viewmodel.GraphListViewModelFactory
@@ -21,6 +26,36 @@ import app.pmsoft.graphwalker.ui.viewmodel.GraphListViewModelFactory
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GraphWalkerApp() {
+    val navController = rememberNavController()
+    
+    NavHost(
+        navController = navController,
+        startDestination = "graph_list"
+    ) {
+        composable("graph_list") {
+            GraphListScreen(
+                onNavigateToNode = { fullGraph: FullGraph ->
+                    navController.navigate("node_view/${fullGraph.id}")
+                }
+            )
+        }
+        composable("node_view/{graphId}") { backStackEntry ->
+            val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
+            NodeViewScreen(
+                graphId = graphId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GraphListScreen(
+    onNavigateToNode: (FullGraph) -> Unit
+) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
     val repository = GraphRepository(
@@ -62,7 +97,7 @@ fun GraphWalkerApp() {
             items(fullGraphs) { fullGraph ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { }
+                    onClick = { onNavigateToNode(fullGraph) }
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -165,6 +200,37 @@ fun GraphWalkerApp() {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun NodeViewScreen(
+    graphId: Long,
+    onNavigateBack: () -> Unit
+) {
+    val context = LocalContext.current
+    val database = GraphWalkerDatabase.getDatabase(context)
+    val repository = GraphRepository(
+        database.graphDao(),
+        database.nodeDao(),
+        database.connectorDao(),
+        database.edgeDao()
+    )
+
+    val fullGraph by repository.getFullGraphById(graphId).collectAsState(initial = null)
+
+    fullGraph?.let { graph ->
+        NodeView(
+            fullGraph = graph,
+            onNavigateBack = onNavigateBack
+        )
+    } ?: run {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
         }
     }
 }

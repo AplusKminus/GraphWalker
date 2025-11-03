@@ -11,6 +11,9 @@ interface ConnectorDao {
 
     @Query("SELECT * FROM connectors WHERE id = :id")
     fun getConnectorById(id: Long): Flow<Connector?>
+    
+    @Query("SELECT * FROM connectors")
+    fun getAllConnectors(): Flow<List<Connector>>
 
     @Insert
     suspend fun insertConnector(connector: Connector): Long

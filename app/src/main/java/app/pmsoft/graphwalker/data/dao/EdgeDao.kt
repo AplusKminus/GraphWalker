@@ -12,6 +12,9 @@ interface EdgeDao {
     @Query("SELECT * FROM edges WHERE id = :id")
     fun getEdgeById(id: Long): Flow<Edge?>
 
+    @Query("SELECT * FROM edges")
+    fun getAllEdges(): Flow<List<Edge>>
+
     @Query("""
         SELECT edges.* FROM edges 
         INNER JOIN connectors c1 ON edges.fromConnectorId = c1.id 

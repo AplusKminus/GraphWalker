@@ -51,6 +51,8 @@ class GraphRepository(
     
     fun getConnectorById(id: Long): Flow<Connector?> = connectorDao.getConnectorById(id)
     
+    fun getAllConnectors(): Flow<List<Connector>> = connectorDao.getAllConnectors()
+    
     suspend fun insertConnector(connector: Connector): Long = connectorDao.insertConnector(connector)
     
     suspend fun updateConnector(connector: Connector) = connectorDao.updateConnector(connector)
@@ -62,6 +64,8 @@ class GraphRepository(
     fun getEdgeById(id: Long): Flow<Edge?> = edgeDao.getEdgeById(id)
     
     fun getEdgesByGraphId(graphId: Long): Flow<List<Edge>> = edgeDao.getEdgesByGraphId(graphId)
+    
+    fun getAllEdges(): Flow<List<Edge>> = edgeDao.getAllEdges()
     
     suspend fun insertEdge(edge: Edge): Long = edgeDao.insertEdge(edge)
     
