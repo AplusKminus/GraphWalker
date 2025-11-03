@@ -18,7 +18,8 @@ import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModelFactory
 fun ConnectorScreen(
     connectorId: Long,
     onNavigateBack: () -> Unit,
-    onNavigateToNode: (Long, Long) -> Unit = { _, _ -> }
+    onNavigateToNode: (Long, Long) -> Unit = { _, _ -> },
+    onNavigateToAddEdge: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -79,7 +80,8 @@ fun ConnectorScreen(
             onNavigateToNode = onNavigateToNode,
             onNavigateBack = onNavigateBack,
             triggerEditDelete = triggerEditDelete,
-            onEditDeleteHandled = { triggerEditDelete = false }
+            onEditDeleteHandled = { triggerEditDelete = false },
+            onNavigateToAddEdge = onNavigateToAddEdge
         )
     }
 }

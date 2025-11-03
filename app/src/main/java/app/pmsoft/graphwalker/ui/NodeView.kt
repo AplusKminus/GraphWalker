@@ -4,7 +4,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -21,6 +20,8 @@ import app.pmsoft.graphwalker.data.GraphWalkerDatabase
 import app.pmsoft.graphwalker.data.entity.Connector
 import app.pmsoft.graphwalker.data.model.FullGraph
 import app.pmsoft.graphwalker.repository.GraphRepository
+import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModel
+import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModelFactory
 import app.pmsoft.graphwalker.ui.viewmodel.NodeViewModel
 import app.pmsoft.graphwalker.ui.viewmodel.NodeViewModelFactory
 
@@ -30,7 +31,8 @@ fun NodeView(
     fullGraph: FullGraph,
     targetNodeId: Long? = null,
     onNavigateBack: () -> Unit,
-    onNavigateToConnector: (Long) -> Unit = {}
+    onNavigateToConnector: (Long) -> Unit = {},
+    onNavigateToAddEdge: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -72,6 +74,21 @@ fun NodeView(
         }
     }
 
+    // Ensure default connector exists when hasConnectors is false
+    LaunchedEffect(currentNode, fullGraph.hasConnectors) {
+        if (currentNode != null && !fullGraph.hasConnectors) {
+            // Check if default connector already exists
+            if (connectors.isEmpty()) {
+                viewModel.addConnector(currentNode.id, "")
+            }
+        }
+    }
+
+    // Get the default connector for ConnectorView when hasConnectors is false
+    val defaultConnector = if (!fullGraph.hasConnectors && connectors.isNotEmpty()) {
+        connectors.first()
+    } else null
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -109,26 +126,25 @@ fun NodeView(
         }
     ) { paddingValues ->
         if (currentNode != null) {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
+                    .padding(paddingValues)
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                item {
-                    TagsSection(
-                        tags = currentNode?.tags ?: emptyList(),
-                        onAddTag = { showAddTagDialog = true },
-                        onTagTap = { tag ->
-                            selectedTag = tag
-                            tagToEdit = tag
-                            showTagContextMenu = true
-                        }
-                    )
-                }
+                TagsSection(
+                    tags = currentNode.tags ?: emptyList(),
+                    onAddTag = { showAddTagDialog = true },
+                    onTagTap = { tag ->
+                        selectedTag = tag
+                        tagToEdit = tag
+                        showTagContextMenu = true
+                    }
+                )
                 
-                item {
+                // Conditional rendering based on hasConnectors setting
+                if (fullGraph.hasConnectors) {
                     ConnectorsSection(
                         connectors = connectors,
                         edgeCounts = edgeCounts,
@@ -136,6 +152,23 @@ fun NodeView(
                         onConnectorCreated = { connectorName ->
                             viewModel.addConnector(currentNode.id, connectorName)
                         }
+                    )
+                } else if (defaultConnector != null) {
+                    val connectorViewModel: ConnectorViewModel = viewModel(
+                        factory = ConnectorViewModelFactory(repository, defaultConnector.id)
+                    )
+                    ConnectorView(
+                        connectorId = defaultConnector.id,
+                        paddingValues = PaddingValues(0.dp),
+                        viewModel = connectorViewModel,
+                        onNavigateToNode = { _, _ -> 
+                            // No navigation needed since we're already on the node view
+                        },
+                        onNavigateBack = {},
+                        triggerEditDelete = false,
+                        onEditDeleteHandled = {},
+                        applyContentPadding = false,
+                        onNavigateToAddEdge = onNavigateToAddEdge
                     )
                 }
             }

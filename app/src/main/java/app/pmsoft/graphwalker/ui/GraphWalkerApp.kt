@@ -48,6 +48,9 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToConnector = { connectorId ->
                     navController.navigate("connector_view/$connectorId")
+                },
+                onNavigateToAddEdge = { connectorId ->
+                    navController.navigate("add_edge/$connectorId")
                 }
             )
         }
@@ -62,6 +65,9 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToConnector = { connectorId ->
                     navController.navigate("connector_view/$connectorId")
+                },
+                onNavigateToAddEdge = { connectorId ->
+                    navController.navigate("add_edge/$connectorId")
                 }
             )
         }
@@ -74,6 +80,18 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToNode = { graphId, nodeId ->
                     navController.navigate("node_view/$graphId/$nodeId")
+                },
+                onNavigateToAddEdge = { connectorId ->
+                    navController.navigate("add_edge/$connectorId")
+                }
+            )
+        }
+        composable("add_edge/{connectorId}") { backStackEntry ->
+            val connectorId = backStackEntry.arguments?.getString("connectorId")?.toLong() ?: return@composable
+            AddEdgeScreen(
+                connectorId = connectorId,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -350,7 +368,8 @@ fun NodeViewScreen(
     graphId: Long,
     nodeId: Long? = null,
     onNavigateBack: () -> Unit,
-    onNavigateToConnector: (Long) -> Unit = {}
+    onNavigateToConnector: (Long) -> Unit = {},
+    onNavigateToAddEdge: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -368,7 +387,8 @@ fun NodeViewScreen(
             fullGraph = graph,
             targetNodeId = nodeId,
             onNavigateBack = onNavigateBack,
-            onNavigateToConnector = onNavigateToConnector
+            onNavigateToConnector = onNavigateToConnector,
+            onNavigateToAddEdge = onNavigateToAddEdge
         )
     } ?: run {
         Box(
