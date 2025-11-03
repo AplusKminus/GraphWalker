@@ -34,8 +34,23 @@ fun GraphWalkerApp() {
     ) {
         composable("graph_list") {
             GraphListScreen(
-                onNavigateToNode = { fullGraph: FullGraph ->
-                    navController.navigate("node_view/${fullGraph.id}")
+                onNavigateToGraph = { fullGraph: FullGraph ->
+                    navController.navigate("graph_view/${fullGraph.id}")
+                }
+            )
+        }
+        composable("graph_view/{graphId}") { backStackEntry ->
+            val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
+            GraphScreen(
+                graphId = graphId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToNode = { graphId, nodeId ->
+                    navController.navigate("node_view/$graphId/$nodeId")
+                },
+                onNavigateToConnector = { connectorId ->
+                    navController.navigate("connector_view/$connectorId")
                 }
             )
         }
@@ -101,7 +116,7 @@ fun GraphWalkerApp() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GraphListScreen(
-    onNavigateToNode: (FullGraph) -> Unit
+    onNavigateToGraph: (FullGraph) -> Unit
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -148,7 +163,7 @@ fun GraphListScreen(
             items(fullGraphs) { fullGraph ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { onNavigateToNode(fullGraph) }
+                    onClick = { onNavigateToGraph(fullGraph) }
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)

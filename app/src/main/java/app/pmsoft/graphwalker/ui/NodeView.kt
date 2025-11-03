@@ -60,23 +60,27 @@ fun NodeView(
 
     val connectors by viewModel.connectors.collectAsState()
     val edgeCounts by viewModel.edgeCounts.collectAsState()
+    val viewModelFullGraph by viewModel.fullGraph.collectAsState()
 
     // Determine which node to display: targetNodeId takes precedence over starting node
-    val currentNode = remember(fullGraph, targetNodeId) {
-        targetNodeId?.let { nodeId ->
-            fullGraph.nodes.find { it.id == nodeId }
-        } ?: fullGraph.startingNode
+    val currentNode = remember(viewModelFullGraph, targetNodeId) {
+        viewModelFullGraph?.let { graph ->
+            targetNodeId?.let { nodeId ->
+                graph.nodes.find { it.id == nodeId }
+            } ?: graph.startingNode
+        }
     }
 
-    LaunchedEffect(currentNode) {
-        if (currentNode == null) {
+    LaunchedEffect(currentNode, viewModelFullGraph) {
+        // Only show creation dialog if graph is loaded and there's genuinely no node to display
+        if (viewModelFullGraph != null && currentNode == null && targetNodeId == null) {
             showCreateNodeDialog = true
         }
     }
 
     // Ensure default connector exists when hasConnectors is false
-    LaunchedEffect(currentNode, fullGraph.hasConnectors) {
-        if (currentNode != null && !fullGraph.hasConnectors) {
+    LaunchedEffect(currentNode, viewModelFullGraph?.hasConnectors) {
+        if (currentNode != null && viewModelFullGraph?.hasConnectors == false) {
             // Check if default connector already exists
             if (connectors.isEmpty()) {
                 viewModel.addConnector(currentNode.id, "")
@@ -85,7 +89,7 @@ fun NodeView(
     }
 
     // Get the default connector for ConnectorView when hasConnectors is false
-    val defaultConnector = if (!fullGraph.hasConnectors && connectors.isNotEmpty()) {
+    val defaultConnector = if (viewModelFullGraph?.hasConnectors == false && connectors.isNotEmpty()) {
         connectors.first()
     } else null
 
@@ -134,7 +138,7 @@ fun NodeView(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 TagsSection(
-                    tags = currentNode.tags ?: emptyList(),
+                    tags = currentNode.tags,
                     onAddTag = { showAddTagDialog = true },
                     onTagTap = { tag ->
                         selectedTag = tag
@@ -144,7 +148,7 @@ fun NodeView(
                 )
                 
                 // Conditional rendering based on hasConnectors setting
-                if (fullGraph.hasConnectors) {
+                if (viewModelFullGraph?.hasConnectors == true) {
                     ConnectorsSection(
                         connectors = connectors,
                         edgeCounts = edgeCounts,
