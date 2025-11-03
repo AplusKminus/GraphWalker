@@ -20,9 +20,9 @@ class GraphListViewModel(
             initialValue = emptyList()
         )
 
-    fun createNewGraph() {
+    fun createNewGraph(name: String) {
         viewModelScope.launch {
-            val newGraph = Graph(name = "New Graph ${System.currentTimeMillis()}")
+            val newGraph = Graph(name = name)
             repository.insertGraph(newGraph)
         }
     }

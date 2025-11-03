@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.pmsoft.graphwalker.data.GraphWalkerDatabase
 import app.pmsoft.graphwalker.repository.GraphRepository
@@ -32,6 +33,9 @@ fun GraphWalkerApp() {
         factory = GraphListViewModelFactory(repository)
     )
 
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var graphName by remember { mutableStateOf("") }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -40,7 +44,7 @@ fun GraphWalkerApp() {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.createNewGraph() }
+                onClick = { showCreateDialog = true }
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Graph")
             }
@@ -96,6 +100,68 @@ fun GraphWalkerApp() {
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCreateDialog) {
+        Dialog(onDismissRequest = { 
+            showCreateDialog = false
+            graphName = ""
+        }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Create New Graph",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    
+                    OutlinedTextField(
+                        value = graphName,
+                        onValueChange = { graphName = it },
+                        label = { Text("Graph Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = {
+                                showCreateDialog = false
+                                graphName = ""
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Button(
+                            onClick = {
+                                if (graphName.isNotBlank()) {
+                                    viewModel.createNewGraph(graphName.trim())
+                                    showCreateDialog = false
+                                    graphName = ""
+                                }
+                            },
+                            enabled = graphName.isNotBlank()
+                        ) {
+                            Text("Create")
+                        }
                     }
                 }
             }
