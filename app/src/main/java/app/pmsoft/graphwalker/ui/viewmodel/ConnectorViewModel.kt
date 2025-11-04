@@ -162,4 +162,25 @@ class ConnectorViewModel(
             }
         }
     }
+    
+    fun updateEdgeName(edgeId: Long, newName: String) {
+        viewModelScope.launch {
+            val currentEdges = edges.value
+            val edgeToUpdate = currentEdges.find { it.id == edgeId }
+            if (edgeToUpdate != null) {
+                val updatedEdge = edgeToUpdate.copy(name = newName)
+                repository.updateEdge(updatedEdge)
+            }
+        }
+    }
+    
+    fun deleteEdge(edgeId: Long) {
+        viewModelScope.launch {
+            val currentEdges = edges.value
+            val edgeToDelete = currentEdges.find { it.id == edgeId }
+            if (edgeToDelete != null) {
+                repository.deleteEdge(edgeToDelete)
+            }
+        }
+    }
 }

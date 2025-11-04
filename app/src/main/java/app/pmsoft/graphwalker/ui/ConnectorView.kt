@@ -1,8 +1,10 @@
 package app.pmsoft.graphwalker.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,6 +65,7 @@ fun ConnectorView(
                     connectedConnectorName = connectedConnectors[edge.id] ?: "Unknown",
                     currentConnectorId = connectorId,
                     showWeight = graph?.hasEdgeWeights == true,
+                    hasEdgeLabels = graph?.hasEdgeLabels == true,
                     onNavigateToNode = {
                         val targetNodeId = targetNodeIds[edge.id]
                         val graphId = currentNode?.graphId
@@ -70,6 +73,12 @@ fun ConnectorView(
                             onNavigateToNode(targetNodeId)
                         }
                     },
+                    onRenameEdge = { edgeId, newName ->
+                        viewModel.updateEdgeName(edgeId, newName)
+                    },
+                    onDeleteEdge = { edgeId ->
+                        viewModel.deleteEdge(edgeId)
+                    }
                 )
             }
 
@@ -241,48 +250,207 @@ fun EdgeItem(
     connectedConnectorName: String,
     currentConnectorId: Long,
     showWeight: Boolean = false,
+    hasEdgeLabels: Boolean = false,
     onNavigateToNode: () -> Unit = {},
+    onRenameEdge: (Long, String) -> Unit = { _, _ -> },
+    onDeleteEdge: (Long) -> Unit = {},
 ) {
+    var showContextMenu by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var newEdgeName by remember { mutableStateOf("") }
+    
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onNavigateToNode
+        modifier = Modifier.fillMaxWidth()
+            .clickable { onNavigateToNode() },
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (edge.name.isNotBlank()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (edge.name.isNotBlank()) {
                     Text(
                         text = edge.name,
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
-            }
 
-            val directionLabel = when {
-                edge.bidirectional -> "↔️"
-                edge.fromConnectorId == currentConnectorId -> "➡️"
-                else -> "⬅️"
-            }
-            Text(
-                text = "$directionLabel $connectedConnectorName",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            if (showWeight) {
+                val directionLabel = when {
+                    edge.bidirectional -> "↔️"
+                    edge.fromConnectorId == currentConnectorId -> "➡️"
+                    else -> "⬅️"
+                }
                 Text(
-                    text = "Weight: ${edge.weight}",
+                    text = "$directionLabel $connectedConnectorName",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                if (showWeight) {
+                    Text(
+                        text = "Weight: ${edge.weight}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Box {
+                IconButton(onClick = { showContextMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "More options"
+                    )
+                }
+                DropdownMenu(
+                    expanded = showContextMenu,
+                    onDismissRequest = { showContextMenu = false }
+                ) {
+                    if (hasEdgeLabels) {
+                        DropdownMenuItem(
+                            text = { Text("Rename") },
+                            onClick = {
+                                showContextMenu = false
+                                newEdgeName = edge.name
+                                showRenameDialog = true
+                            }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            showContextMenu = false
+                            showDeleteConfirmation = true
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    // Rename dialog
+    if (showRenameDialog) {
+        Dialog(onDismissRequest = {
+            showRenameDialog = false
+            newEdgeName = ""
+        }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Rename Edge",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    
+                    OutlinedTextField(
+                        value = newEdgeName,
+                        onValueChange = { newEdgeName = it },
+                        label = { Text("Edge Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = {
+                                showRenameDialog = false
+                                newEdgeName = ""
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Button(
+                            onClick = {
+                                if (newEdgeName.isNotBlank()) {
+                                    onRenameEdge(edge.id, newEdgeName.trim())
+                                    showRenameDialog = false
+                                    newEdgeName = ""
+                                }
+                            },
+                            enabled = newEdgeName.isNotBlank()
+                        ) {
+                            Text("Save")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Delete confirmation dialog
+    if (showDeleteConfirmation) {
+        Dialog(onDismissRequest = {
+            showDeleteConfirmation = false
+        }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Delete Edge",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    
+                    Text(
+                        text = if (edge.name.isNotBlank()) {
+                            "Are you sure you want to delete the edge '${edge.name}'?"
+                        } else {
+                            "Are you sure you want to delete this edge?"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = { showDeleteConfirmation = false }
+                        ) {
+                            Text("Cancel")
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Button(
+                            onClick = {
+                                onDeleteEdge(edge.id)
+                                showDeleteConfirmation = false
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Delete")
+                        }
+                    }
+                }
             }
         }
     }
