@@ -48,6 +48,55 @@ class NodeViewModel(
             initialValue = emptyMap()
         )
 
+    val connectedNodes: StateFlow<Map<Long, List<Pair<String, String>>>> = combine(
+        connectors,
+        repository.getAllEdges(),
+        repository.getAllConnectors(),
+        repository.getAllNodes()
+    ) { connectorList, allEdges, allConnectors, allNodes ->
+        val connectorMap = allConnectors.associateBy { it.id }
+        val nodeMap = allNodes.associateBy { it.id }
+        
+        connectorList.associate { connector ->
+            val connectedNodesWithDirection = allEdges
+                .filter { edge ->
+                    edge.fromConnectorId == connector.id || edge.toConnectorId == connector.id
+                }
+                .mapNotNull { edge ->
+                    val (otherConnectorId, direction) = when {
+                        edge.bidirectional -> {
+                            val otherId = if (edge.fromConnectorId == connector.id) {
+                                edge.toConnectorId
+                            } else {
+                                edge.fromConnectorId
+                            }
+                            otherId to "↔"
+                        }
+                        edge.fromConnectorId == connector.id -> {
+                            edge.toConnectorId to "→"
+                        }
+                        else -> {
+                            edge.fromConnectorId to "←"
+                        }
+                    }
+                    
+                    connectorMap[otherConnectorId]?.let { otherConnector ->
+                        nodeMap[otherConnector.nodeId]?.name?.let { nodeName ->
+                            nodeName to direction
+                        }
+                    }
+                }
+                .distinctBy { it.first }
+            
+            connector.id to connectedNodesWithDirection
+        }
+    }
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.Lazily,
+            initialValue = emptyMap()
+        )
+
     fun createStartingNode(name: String) {
         viewModelScope.launch {
             val nodeId = repository.insertNode(Node(graphId = graphId, name = name))

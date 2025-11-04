@@ -70,7 +70,7 @@ fun NodeView(
     var newTag by remember { mutableStateOf("") }
 
     val connectors by viewModel.connectors.collectAsState()
-    val edgeCounts by viewModel.edgeCounts.collectAsState()
+    val connectedNodes by viewModel.connectedNodes.collectAsState()
     val viewModelFullGraph by viewModel.fullGraph.collectAsState()
     
     // Clique-related flows
@@ -167,7 +167,7 @@ fun NodeView(
                 if (viewModelFullGraph?.hasConnectors == true) {
                     ConnectorsSection(
                         connectors = connectors,
-                        edgeCounts = edgeCounts,
+                        connectedNodes = connectedNodes,
                         onNavigateToConnector = onNavigateToConnector,
                         onConnectorCreated = { connectorName ->
                             viewModel.addConnector(currentNode.id, connectorName)
@@ -516,7 +516,7 @@ fun TagContextMenuDialog(
 @Composable
 fun ConnectorItem(
     connector: Connector,
-    edgeCount: Int,
+    connectedNodes: List<Pair<String, String>>,
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -540,15 +540,21 @@ fun ConnectorItem(
                 )
             }
             
-            Text(
-                text = when (edgeCount) {
-                    0 -> "No connected edges"
-                    1 -> "1 connected edge"
-                    else -> "$edgeCount connected edges"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (connectedNodes.isEmpty()) {
+                Text(
+                    text = "No connected nodes",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                connectedNodes.forEach { (nodeName, direction) ->
+                    Text(
+                        text = "$direction $nodeName",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

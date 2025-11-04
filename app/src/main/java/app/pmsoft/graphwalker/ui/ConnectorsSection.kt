@@ -16,7 +16,7 @@ import app.pmsoft.graphwalker.data.entity.Connector
 @Composable
 fun ConnectorsSection(
     connectors: List<Connector>,
-    edgeCounts: Map<Long, Int>,
+    connectedNodes: Map<Long, List<Pair<String, String>>>,
     onNavigateToConnector: (Long) -> Unit,
     onConnectorCreated: (String) -> Unit
 ) {
@@ -49,7 +49,7 @@ fun ConnectorsSection(
             connectors.forEach { connector ->
                 ConnectorItem(
                     connector = connector,
-                    edgeCount = edgeCounts[connector.id] ?: 0,
+                    connectedNodes = connectedNodes[connector.id] ?: emptyList(),
                     onClick = { onNavigateToConnector(connector.id) }
                 )
             }
