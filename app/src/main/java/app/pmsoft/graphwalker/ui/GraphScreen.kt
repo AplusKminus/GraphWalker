@@ -10,6 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -71,6 +74,17 @@ fun GraphScreen(
     var cliqueName by remember { mutableStateOf("") }
     var cliqueWeight by remember { mutableStateOf("1.0") }
     var startingNodeName by remember { mutableStateOf("") }
+    var showDropdownMenu by remember { mutableStateOf(false) }
+    var showEditGraphDialog by remember { mutableStateOf(false) }
+    var showDeleteGraphDialog by remember { mutableStateOf(false) }
+    var editedGraphName by remember { mutableStateOf("") }
+
+    // Initialize edit graph name when graph loads
+    LaunchedEffect(fullGraph) {
+        fullGraph?.let { 
+            editedGraphName = it.name 
+        }
+    }
 
     // Filter connectors for this graph
     val graphConnectors = remember(allConnectors, allNodes) {
@@ -141,6 +155,36 @@ fun GraphScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showDropdownMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        }
+                        DropdownMenu(
+                            expanded = showDropdownMenu,
+                            onDismissRequest = { showDropdownMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Edit") },
+                                onClick = {
+                                    showDropdownMenu = false
+                                    showEditGraphDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete") },
+                                onClick = {
+                                    showDropdownMenu = false
+                                    showDeleteGraphDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Delete, contentDescription = null)
+                                }
+                            )
                         }
                     }
                 )
@@ -293,6 +337,61 @@ fun GraphScreen(
                 }
                 showCreateStartingNodeDialog = false
                 startingNodeName = ""
+            }
+        )
+    }
+
+    // Edit Graph Dialog
+    if (showEditGraphDialog) {
+        EditGraphDialog(
+            graphName = editedGraphName,
+            onGraphNameChange = { editedGraphName = it },
+            onDismiss = {
+                showEditGraphDialog = false
+                editedGraphName = fullGraph?.name ?: ""
+            },
+            onSave = { newName ->
+                fullGraph?.let { graph ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val updatedGraph = app.pmsoft.graphwalker.data.entity.Graph(
+                            id = graph.id,
+                            name = newName.trim(),
+                            startingNodeId = graph.startingNode?.id,
+                            isDirected = graph.isDirected,
+                            hasEdgeWeights = graph.hasEdgeWeights,
+                            hasEdgeLabels = graph.hasEdgeLabels,
+                            hasConnectors = graph.hasConnectors
+                        )
+                        repository.updateGraph(updatedGraph)
+                    }
+                }
+                showEditGraphDialog = false
+            }
+        )
+    }
+
+    // Delete Graph Dialog
+    if (showDeleteGraphDialog) {
+        DeleteGraphDialog(
+            graphName = fullGraph?.name ?: "",
+            onDismiss = { showDeleteGraphDialog = false },
+            onConfirm = {
+                fullGraph?.let { graph ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val graphEntity = app.pmsoft.graphwalker.data.entity.Graph(
+                            id = graph.id,
+                            name = graph.name,
+                            startingNodeId = graph.startingNode?.id,
+                            isDirected = graph.isDirected,
+                            hasEdgeWeights = graph.hasEdgeWeights,
+                            hasEdgeLabels = graph.hasEdgeLabels,
+                            hasConnectors = graph.hasConnectors
+                        )
+                        repository.deleteGraph(graphEntity)
+                    }
+                }
+                showDeleteGraphDialog = false
+                onNavigateBack()
             }
         )
     }
@@ -745,4 +844,83 @@ private fun CreateStartingNodeDialog(
             }
         }
     }
+}
+
+@Composable
+private fun EditGraphDialog(
+    graphName: String,
+    onGraphNameChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Edit Graph",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+
+                OutlinedTextField(
+                    value = graphName,
+                    onValueChange = onGraphNameChange,
+                    label = { Text("Graph Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { onSave(graphName) },
+                        enabled = graphName.isNotBlank()
+                    ) {
+                        Text("Save")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteGraphDialog(
+    graphName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Graph") },
+        text = { Text("Are you sure you want to delete the graph \"$graphName\"? This action cannot be undone and will delete all its nodes, edges, and cliques.") },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
