@@ -42,8 +42,8 @@ import app.pmsoft.graphwalker.ui.viewmodel.CliqueViewModelFactory
 fun GraphScreen(
     graphId: Long,
     onNavigateBack: () -> Unit,
-    onNavigateToNode: (Long, Long?) -> Unit,
-    onNavigateToConnector: (Long) -> Unit,
+    onNavigateToNode: (Long?) -> Unit,
+    onNavigateToConnector: (Long, Long) -> Unit, // connectorId, nodeId
     onNavigateToClique: (Long) -> Unit,
     onNavigateToUnconnectedConnectors: (Long) -> Unit
 ) {
@@ -216,7 +216,7 @@ fun GraphScreen(
                             startingNode = graph.startingNode,
                             onClick = {
                                 if (graph.startingNode != null) {
-                                    onNavigateToNode(graphId, graph.startingNode.id)
+                                    onNavigateToNode(graph.startingNode.id)
                                 } else {
                                     // Show create starting node dialog
                                     showCreateStartingNodeDialog = true
@@ -510,8 +510,8 @@ private fun SearchSection(
 @Composable
 private fun SearchResultItem(
     result: SearchResult,
-    onNavigateToNode: (Long, Long) -> Unit,
-    onNavigateToConnector: (Long) -> Unit,
+    onNavigateToNode: (Long?) -> Unit,
+    onNavigateToConnector: (Long, Long) -> Unit,
     onNavigateToClique: (Long) -> Unit
 ) {
     when (result) {
@@ -525,7 +525,7 @@ private fun SearchResultItem(
                 title = result.node.name,
                 type = "Node",
                 contextInfo = contextInfo,
-                onClick = { onNavigateToNode(result.node.graphId, result.node.id) }
+                onClick = { onNavigateToNode(result.node.id) }
             )
         }
         
@@ -534,7 +534,7 @@ private fun SearchResultItem(
                 title = result.connector.name.ifBlank { "(Unnamed connector)" },
                 type = "Connector",
                 contextInfo = listOf("In node: ${result.node?.name ?: "Unknown"}"),
-                onClick = { onNavigateToConnector(result.connector.id) }
+                onClick = { onNavigateToConnector(result.connector.id, result.connector.nodeId) }
             )
         }
         

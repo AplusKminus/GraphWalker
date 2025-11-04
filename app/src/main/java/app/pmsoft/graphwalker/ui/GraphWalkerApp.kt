@@ -36,32 +36,32 @@ fun GraphWalkerApp() {
         composable("graph_list") {
             GraphListScreen(
                 onNavigateToGraph = { fullGraph: FullGraph ->
-                    navController.navigate("graph_view/${fullGraph.id}")
+                    navController.navigate("graphs/${fullGraph.id}")
                 }
             )
         }
-        composable("graph_view/{graphId}") { backStackEntry ->
+        composable("graphs/{graphId}") { backStackEntry ->
             val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
             GraphScreen(
                 graphId = graphId,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToNode = { graphId, nodeId ->
-                    navController.navigate("node_view/$graphId/$nodeId")
+                onNavigateToNode = { nodeId ->
+                    navController.navigate("graphs/$graphId/nodes/$nodeId")
                 },
-                onNavigateToConnector = { connectorId ->
-                    navController.navigate("connector_view/$connectorId")
+                onNavigateToConnector = { connectorId, nodeId ->
+                    navController.navigate("graphs/$graphId/nodes/$nodeId/connectors/$connectorId")
                 },
                 onNavigateToClique = { cliqueId ->
-                    navController.navigate("clique_view/$cliqueId")
+                    navController.navigate("graphs/$graphId/cliques/$cliqueId")
                 },
                 onNavigateToUnconnectedConnectors = { graphIdForConnectors ->
-                    navController.navigate("unconnected_connectors/$graphIdForConnectors")
+                    navController.navigate("graphs/$graphIdForConnectors/analysis/unconnected-connectors")
                 }
             )
         }
-        composable("node_view/{graphId}") { backStackEntry ->
+        composable("graphs/{graphId}/nodes") { backStackEntry ->
             val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
             NodeViewScreen(
                 graphId = graphId,
@@ -69,20 +69,20 @@ fun GraphWalkerApp() {
                     navController.popBackStack()
                 },
                 onNavigateToConnector = { connectorId ->
-                    navController.navigate("connector_view/$connectorId")
+                    navController.navigate("graphs/$graphId/connectors/$connectorId")
                 },
                 onNavigateToAddEdge = { connectorId ->
-                    navController.navigate("add_edge/$connectorId")
+                    navController.navigate("graphs/$graphId/connectors/$connectorId/add-edge")
                 },
                 onNavigateToGraphOverview = {
-                    navController.popBackStack("graph_view/$graphId", inclusive = false)
+                    navController.popBackStack("graphs/$graphId", inclusive = false)
                 },
                 onNavigateToClique = { cliqueId ->
-                    navController.navigate("clique_view/$cliqueId")
+                    navController.navigate("graphs/$graphId/cliques/$cliqueId")
                 }
             )
         }
-        composable("node_view/{graphId}/{nodeId}") { backStackEntry ->
+        composable("graphs/{graphId}/nodes/{nodeId}") { backStackEntry ->
             val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
             val nodeId = backStackEntry.arguments?.getString("nodeId")?.toLong() ?: return@composable
             NodeViewScreen(
@@ -92,39 +92,41 @@ fun GraphWalkerApp() {
                     navController.popBackStack()
                 },
                 onNavigateToConnector = { connectorId ->
-                    navController.navigate("connector_view/$connectorId")
+                    navController.navigate("graphs/$graphId/nodes/$nodeId/connectors/$connectorId")
                 },
                 onNavigateToAddEdge = { connectorId ->
-                    navController.navigate("add_edge/$connectorId")
+                    navController.navigate("graphs/$graphId/nodes/$nodeId/connectors/$connectorId/add-edge")
                 },
                 onNavigateToGraphOverview = {
-                    navController.popBackStack("graph_view/$graphId", inclusive = false)
+                    navController.popBackStack("graphs/$graphId", inclusive = false)
                 },
                 onNavigateToClique = { cliqueId ->
-                    navController.navigate("clique_view/$cliqueId")
+                    navController.navigate("graphs/$graphId/cliques/$cliqueId")
                 }
             )
         }
-        composable("connector_view/{connectorId}") { backStackEntry ->
+        composable("graphs/{graphId}/nodes/{nodeId}/connectors/{connectorId}") { backStackEntry ->
+            val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
+            val nodeId = backStackEntry.arguments?.getString("nodeId")?.toLong() ?: return@composable
             val connectorId = backStackEntry.arguments?.getString("connectorId")?.toLong() ?: return@composable
             ConnectorScreen(
                 connectorId = connectorId,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToNode = { graphId, nodeId ->
-                    navController.navigate("node_view/$graphId/$nodeId")
+                onNavigateToNode = { nodeId ->
+                    navController.navigate("graphs/$graphId/nodes/$nodeId")
                 },
                 onNavigateToAddEdge = { connectorId ->
-                    navController.navigate("add_edge/$connectorId")
+                    navController.navigate("graphs/$graphId/nodes/$nodeId/connectors/$connectorId/add-edge")
                 },
                 onNavigateToGraphOverview = {
-                    // Navigate back to graph list (we don't know which graph this connector belongs to)
-                    navController.popBackStack("graph_list", inclusive = false)
+                    navController.popBackStack("graphs/$graphId", inclusive = false)
                 }
             )
         }
-        composable("add_edge/{connectorId}") { backStackEntry ->
+        composable("graphs/{graphId}/nodes/{nodeId}/connectors/{connectorId}/add-edge") { backStackEntry ->
+            val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
             val connectorId = backStackEntry.arguments?.getString("connectorId")?.toLong() ?: return@composable
             AddEdgeScreen(
                 connectorId = connectorId,
@@ -132,35 +134,35 @@ fun GraphWalkerApp() {
                     navController.popBackStack()
                 },
                 onNavigateToGraphOverview = {
-                    // Navigate back to graph list (we don't know which graph this connector belongs to)
-                    navController.popBackStack("graph_list", inclusive = false)
+                    navController.popBackStack("graphs/$graphId", inclusive = false)
                 }
             )
         }
-        composable("clique_view/{cliqueId}") { backStackEntry ->
+        composable("graphs/{graphId}/cliques/{cliqueId}") { backStackEntry ->
+            val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
             val cliqueId = backStackEntry.arguments?.getString("cliqueId")?.toLong() ?: return@composable
             CliqueScreen(
                 cliqueId = cliqueId,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToNode = { graphId, nodeId ->
-                    navController.navigate("node_view/$graphId/$nodeId")
+                onNavigateToNode = { nodeId ->
+                    navController.navigate("graphs/$graphId/nodes/$nodeId")
                 },
                 onNavigateToGraphOverview = {
-                    navController.popBackStack("graph_list", inclusive = false)
+                    navController.popBackStack("graphs/$graphId", inclusive = false)
                 }
             )
         }
-        composable("unconnected_connectors/{graphId}") { backStackEntry ->
+        composable("graphs/{graphId}/analysis/unconnected-connectors") { backStackEntry ->
             val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
             UnconnectedConnectorsScreen(
                 graphId = graphId,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToConnector = { connectorId ->
-                    navController.navigate("connector_view/$connectorId")
+                onNavigateToConnector = { connectorId, nodeId ->
+                    navController.navigate("graphs/$graphId/nodes/$nodeId/connectors/$connectorId")
                 }
             )
         }

@@ -178,7 +178,7 @@ fun NodeView(
                         connectorId = defaultConnector.id,
                         paddingValues = PaddingValues(0.dp),
                         viewModel = connectorViewModel,
-                        onNavigateToNode = { _, _ -> 
+                        onNavigateToNode = { _ -> 
                             // No navigation needed since we're already on the node view
                         },
                         onNavigateBack = {},

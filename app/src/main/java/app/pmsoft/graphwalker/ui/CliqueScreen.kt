@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 fun CliqueScreen(
     cliqueId: Long,
     onNavigateBack: () -> Unit,
-    onNavigateToNode: (Long, Long) -> Unit,
+    onNavigateToNode: (Long) -> Unit,
     onNavigateToGraphOverview: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -164,7 +164,7 @@ fun CliqueScreen(
                         items(clique.nodes) { node ->
                             NodeCard(
                                 node = node,
-                                onClick = { onNavigateToNode(clique.clique.graphId, node.id) }
+                                onClick = { onNavigateToNode(node.id) }
                             )
                         }
                     }

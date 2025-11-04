@@ -21,7 +21,7 @@ import app.pmsoft.graphwalker.repository.GraphRepository
 fun UnconnectedConnectorsScreen(
     graphId: Long,
     onNavigateBack: () -> Unit,
-    onNavigateToConnector: (Long) -> Unit
+    onNavigateToConnector: (Long, Long) -> Unit // connectorId, nodeId
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -118,7 +118,7 @@ fun UnconnectedConnectorsScreen(
                     UnconnectedConnectorItem(
                         connector = connector,
                         node = connectorToNode[connector],
-                        onClick = { onNavigateToConnector(connector.id) }
+                        onClick = { onNavigateToConnector(connector.id, connector.nodeId) }
                     )
                 }
             }

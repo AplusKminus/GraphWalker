@@ -19,7 +19,7 @@ fun ConnectorView(
     connectorId: Long,
     paddingValues: PaddingValues,
     viewModel: ConnectorViewModel,
-    onNavigateToNode: (Long, Long) -> Unit,
+    onNavigateToNode: (Long) -> Unit,
     onNavigateBack: () -> Unit,
     triggerEditDelete: Boolean,
     onEditDeleteHandled: () -> Unit,
@@ -72,7 +72,7 @@ fun ConnectorView(
                             val targetNodeId = targetNodeIds[edge.id]
                             val graphId = currentNode?.graphId
                             if (targetNodeId != null && targetNodeId != -1L && graphId != null) {
-                                onNavigateToNode(graphId, targetNodeId)
+                                onNavigateToNode(targetNodeId)
                             }
                         }
                     )

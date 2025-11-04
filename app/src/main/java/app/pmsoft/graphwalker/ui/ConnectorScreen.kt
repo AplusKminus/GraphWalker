@@ -19,7 +19,7 @@ import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModelFactory
 fun ConnectorScreen(
     connectorId: Long,
     onNavigateBack: () -> Unit,
-    onNavigateToNode: (Long, Long) -> Unit = { _, _ -> },
+    onNavigateToNode: (Long) -> Unit = { _ -> },
     onNavigateToAddEdge: (Long) -> Unit = {},
     onNavigateToGraphOverview: () -> Unit = {}
 ) {
