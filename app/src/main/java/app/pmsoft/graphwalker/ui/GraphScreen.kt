@@ -153,37 +153,7 @@ fun GraphScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Starting Node Section
-                item {
-                    StartingNodeSection(
-                        startingNode = graph.startingNode,
-                        onClick = {
-                            if (graph.startingNode != null) {
-                                onNavigateToNode(graphId, graph.startingNode.id)
-                            } else {
-                                // Show create starting node dialog
-                                showCreateStartingNodeDialog = true
-                            }
-                        },
-                    )
-                }
-
-                // Graph Configuration Section
-                item {
-                    GraphConfigSection(graph = graph)
-                }
-
-                // Cliques Section
-                item {
-                    CliquesSection(
-                        cliques = cliques,
-                        graph = graph,
-                        onCreateClique = { showCreateCliqueDialog = true },
-                        onNavigateToClique = onNavigateToClique
-                    )
-                }
-
-                // Search Section
+                // Search Section - Always at top
                 item {
                     SearchSection(
                         searchText = searchText,
@@ -192,6 +162,39 @@ fun GraphScreen(
                         onFilterChange = { selectedFilter = it },
                         graph = graph
                     )
+                }
+
+                // Show other content only when search is empty
+                if (searchText.isBlank()) {
+                    // Starting Node Section
+                    item {
+                        StartingNodeSection(
+                            startingNode = graph.startingNode,
+                            onClick = {
+                                if (graph.startingNode != null) {
+                                    onNavigateToNode(graphId, graph.startingNode.id)
+                                } else {
+                                    // Show create starting node dialog
+                                    showCreateStartingNodeDialog = true
+                                }
+                            },
+                        )
+                    }
+
+                    // Graph Configuration Section
+                    item {
+                        GraphConfigSection(graph = graph)
+                    }
+
+                    // Cliques Section
+                    item {
+                        CliquesSection(
+                            cliques = cliques,
+                            graph = graph,
+                            onCreateClique = { showCreateCliqueDialog = true },
+                            onNavigateToClique = onNavigateToClique
+                        )
+                    }
                 }
 
                 // Search Results
@@ -300,53 +303,45 @@ private fun StartingNodeSection(
     startingNode: Node?,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Starting Node",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            if (startingNode != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onClick() },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+        Text(
+            text = "Starting Node",
+            style = MaterialTheme.typography.headlineSmall
+        )
+        
+        if (startingNode != null) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onClick() }
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp)
-                    ) {
+                    Text(
+                        text = startingNode.name,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    if (startingNode.tags.isNotEmpty()) {
                         Text(
-                            text = startingNode.name,
-                            style = MaterialTheme.typography.titleMedium
+                            text = "Tags: ${startingNode.tags.joinToString(", ")}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (startingNode.tags.isNotEmpty()) {
-                            Text(
-                                text = "Tags: ${startingNode.tags.joinToString(", ")}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
-            } else {
-                Button(
-                    onClick = onClick,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create starting node")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Create Starting Node")
-                }
+            }
+        } else {
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Create starting node")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Create Starting Node")
             }
         }
     }
@@ -354,45 +349,36 @@ private fun StartingNodeSection(
 
 @Composable
 private fun GraphConfigSection(graph: FullGraph) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Text(
+            text = "Graph Configuration",
+            style = MaterialTheme.typography.headlineSmall
+        )
+        
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "Graph Configuration",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ConfigChip(text = if (graph.isDirected) "Directed" else "Undirected")
-                if (graph.hasEdgeWeights) ConfigChip(text = "Weighted")
-                if (graph.hasEdgeLabels) ConfigChip(text = "Labeled")
-                if (graph.hasConnectors) ConfigChip(text = "Connectors")
-            }
-            
-            Text(
-                text = "Nodes: ${graph.nodes.size}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            ConfigChip(text = if (graph.isDirected) "Directed" else "Undirected")
+            if (graph.hasEdgeWeights) ConfigChip(text = "Weighted")
+            if (graph.hasEdgeLabels) ConfigChip(text = "Labeled")
+            if (graph.hasConnectors) ConfigChip(text = "Connectors")
         }
+        
+        Text(
+            text = "Nodes: ${graph.nodes.size}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
 private fun ConfigChip(text: String) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
+    Card {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -413,16 +399,10 @@ private fun SearchSection(
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = "Search",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        
         OutlinedTextField(
             value = searchText,
             onValueChange = onSearchTextChange,
-            label = { Text("Search nodes, connectors, edges, and cliques") },
+            label = { Text("Search") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
             trailingIcon = {
                 if (searchText.isNotEmpty()) {
@@ -553,48 +533,42 @@ private fun CliquesSection(
     onCreateClique: () -> Unit,
     onNavigateToClique: (Long) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Text(
+            text = "Cliques",
+            style = MaterialTheme.typography.headlineSmall
+        )
+        
+        if (cliques.isEmpty()) {
+            Text(
+                text = "No cliques created yet",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            cliques.forEach { cliqueWithNodes ->
+                CliqueItem(
+                    cliqueWithNodes = cliqueWithNodes,
+                    hasEdgeWeights = graph.hasEdgeWeights,
+                    onNavigateToClique = { onNavigateToClique(cliqueWithNodes.clique.id) }
+                )
+            }
+        }
+        
+        OutlinedButton(
+            onClick = onCreateClique,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Cliques",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Button(
-                    onClick = onCreateClique
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create clique")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Create Clique")
-                }
-            }
-            
-            if (cliques.isEmpty()) {
-                Text(
-                    text = "No cliques created yet",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                cliques.forEach { cliqueWithNodes ->
-                    CliqueItem(
-                        cliqueWithNodes = cliqueWithNodes,
-                        hasEdgeWeights = graph.hasEdgeWeights,
-                        onNavigateToClique = { onNavigateToClique(cliqueWithNodes.clique.id) }
-                    )
-                }
-            }
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Create clique",
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Add Clique")
         }
     }
 }
@@ -608,9 +582,6 @@ private fun CliqueItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
         onClick = onNavigateToClique
     ) {
         Column(
