@@ -29,7 +29,8 @@ fun ConnectorScreen(
         database.graphDao(),
         database.nodeDao(),
         database.connectorDao(),
-        database.edgeDao()
+        database.edgeDao(),
+        database.cliqueDao()
     )
     val viewModel: ConnectorViewModel = viewModel(
         factory = ConnectorViewModelFactory(repository, connectorId)

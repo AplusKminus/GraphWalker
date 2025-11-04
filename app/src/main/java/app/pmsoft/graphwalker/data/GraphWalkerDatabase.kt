@@ -9,8 +9,8 @@ import app.pmsoft.graphwalker.data.dao.*
 import app.pmsoft.graphwalker.data.entity.*
 
 @Database(
-    entities = [Graph::class, Node::class, Connector::class, Edge::class],
-    version = 2,
+    entities = [Graph::class, Node::class, Connector::class, Edge::class, Clique::class, CliqueNodeCrossRef::class],
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -19,6 +19,7 @@ abstract class GraphWalkerDatabase : RoomDatabase() {
     abstract fun nodeDao(): NodeDao
     abstract fun connectorDao(): ConnectorDao
     abstract fun edgeDao(): EdgeDao
+    abstract fun cliqueDao(): CliqueDao
 
     companion object {
         @Volatile

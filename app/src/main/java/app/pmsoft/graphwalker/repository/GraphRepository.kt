@@ -3,6 +3,8 @@ package app.pmsoft.graphwalker.repository
 import app.pmsoft.graphwalker.data.dao.*
 import app.pmsoft.graphwalker.data.entity.*
 import app.pmsoft.graphwalker.data.model.FullGraph
+import app.pmsoft.graphwalker.data.model.CliqueWithNodes
+import app.pmsoft.graphwalker.data.model.NodeWithCliques
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -10,7 +12,8 @@ class GraphRepository(
     private val graphDao: GraphDao,
     private val nodeDao: NodeDao,
     private val connectorDao: ConnectorDao,
-    private val edgeDao: EdgeDao
+    private val edgeDao: EdgeDao,
+    private val cliqueDao: CliqueDao
 ) {
     fun getAllGraphs(): Flow<List<Graph>> = graphDao.getAllGraphs()
     
@@ -74,4 +77,27 @@ class GraphRepository(
     suspend fun updateEdge(edge: Edge) = edgeDao.updateEdge(edge)
     
     suspend fun deleteEdge(edge: Edge) = edgeDao.deleteEdge(edge)
+    
+    // Clique methods
+    fun getCliquesByGraphId(graphId: Long): Flow<List<Clique>> = cliqueDao.getCliquesByGraphId(graphId)
+    
+    fun getCliquesWithNodesByGraphId(graphId: Long): Flow<List<CliqueWithNodes>> = cliqueDao.getCliquesWithNodesByGraphId(graphId)
+    
+    fun getCliqueWithNodesById(cliqueId: Long): Flow<CliqueWithNodes?> = cliqueDao.getCliqueWithNodesById(cliqueId)
+    
+    fun getNodeWithCliques(nodeId: Long): Flow<NodeWithCliques?> = cliqueDao.getNodeWithCliques(nodeId)
+    
+    fun getNodesWithCliquesByGraphId(graphId: Long): Flow<List<NodeWithCliques>> = cliqueDao.getNodesWithCliquesByGraphId(graphId)
+    
+    suspend fun insertClique(clique: Clique): Long = cliqueDao.insertClique(clique)
+    
+    suspend fun insertCliqueNodeCrossRef(crossRef: CliqueNodeCrossRef) = cliqueDao.insertCliqueNodeCrossRef(crossRef)
+    
+    suspend fun deleteClique(clique: Clique) = cliqueDao.deleteClique(clique)
+    
+    suspend fun removeNodeFromClique(cliqueId: Long, nodeId: Long) = cliqueDao.removeNodeFromClique(cliqueId, nodeId)
+    
+    suspend fun removeAllNodesFromClique(cliqueId: Long) = cliqueDao.removeAllNodesFromClique(cliqueId)
+    
+    suspend fun updateClique(clique: Clique) = cliqueDao.updateClique(clique)
 }

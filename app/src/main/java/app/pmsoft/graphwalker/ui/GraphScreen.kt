@@ -2,6 +2,8 @@ package app.pmsoft.graphwalker.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -15,21 +17,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import app.pmsoft.graphwalker.data.GraphWalkerDatabase
+import app.pmsoft.graphwalker.data.entity.Clique
 import app.pmsoft.graphwalker.data.entity.Connector
 import app.pmsoft.graphwalker.data.entity.Edge
 import app.pmsoft.graphwalker.data.entity.Node
 import app.pmsoft.graphwalker.data.model.FullGraph
+import app.pmsoft.graphwalker.data.model.CliqueWithNodes
 import app.pmsoft.graphwalker.repository.GraphRepository
+import app.pmsoft.graphwalker.ui.viewmodel.CliqueViewModel
+import app.pmsoft.graphwalker.ui.viewmodel.CliqueViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GraphScreen(
     graphId: Long,
     onNavigateBack: () -> Unit,
-    onNavigateToNode: (Long, Long) -> Unit,
-    onNavigateToConnector: (Long) -> Unit
+    onNavigateToNode: (Long, Long?) -> Unit,
+    onNavigateToConnector: (Long) -> Unit,
+    onNavigateToClique: (Long) -> Unit
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -37,17 +51,26 @@ fun GraphScreen(
         database.graphDao(),
         database.nodeDao(),
         database.connectorDao(),
-        database.edgeDao()
+        database.edgeDao(),
+        database.cliqueDao()
+    )
+
+    val cliqueViewModel: CliqueViewModel = viewModel(
+        factory = CliqueViewModelFactory(repository, graphId)
     )
 
     val fullGraph by repository.getFullGraphById(graphId).collectAsState(initial = null)
     val allNodes by repository.getNodesByGraphId(graphId).collectAsState(initial = emptyList())
     val allConnectors by repository.getAllConnectors().collectAsState(initial = emptyList())
     val allEdges by repository.getEdgesByGraphId(graphId).collectAsState(initial = emptyList())
+    val cliques by cliqueViewModel.cliques.collectAsState(initial = emptyList())
     
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(SearchFilter.ALL) }
+    var showCreateCliqueDialog by remember { mutableStateOf(false) }
     var showCreateStartingNodeDialog by remember { mutableStateOf(false) }
+    var cliqueName by remember { mutableStateOf("") }
+    var cliqueWeight by remember { mutableStateOf("1.0") }
     var startingNodeName by remember { mutableStateOf("") }
 
     // Filter connectors for this graph
@@ -98,6 +121,15 @@ fun GraphScreen(
                 }
             }
             
+            // Search cliques
+            if (selectedFilter == SearchFilter.ALL || selectedFilter == SearchFilter.CLIQUES) {
+                cliques.filter { cliqueWithNodes ->
+                    cliqueWithNodes.clique.name.lowercase().contains(query)
+                }.forEach { cliqueWithNodes ->
+                    results.add(SearchResult.CliqueResult(cliqueWithNodes))
+                }
+            }
+            
             results
         }
     }
@@ -142,6 +174,16 @@ fun GraphScreen(
                     GraphConfigSection(graph = graph)
                 }
 
+                // Cliques Section
+                item {
+                    CliquesSection(
+                        cliques = cliques,
+                        graph = graph,
+                        onCreateClique = { showCreateCliqueDialog = true },
+                        onNavigateToClique = onNavigateToClique
+                    )
+                }
+
                 // Search Section
                 item {
                     SearchSection(
@@ -174,7 +216,8 @@ fun GraphScreen(
                             SearchResultItem(
                                 result = result,
                                 onNavigateToNode = onNavigateToNode,
-                                onNavigateToConnector = onNavigateToConnector
+                                onNavigateToConnector = onNavigateToConnector,
+                                onNavigateToClique = onNavigateToClique
                             )
                         }
                     }
@@ -189,6 +232,29 @@ fun GraphScreen(
             CircularProgressIndicator()
         }
     }
+
+    // Create Clique Dialog
+    if (showCreateCliqueDialog) {
+        CreateCliqueDialog(
+            cliqueName = cliqueName,
+            cliqueWeight = cliqueWeight,
+            hasEdgeWeights = fullGraph?.hasEdgeWeights ?: false,
+            onCliqueNameChange = { cliqueName = it },
+            onCliqueWeightChange = { cliqueWeight = it },
+            onDismiss = {
+                showCreateCliqueDialog = false
+                cliqueName = ""
+                cliqueWeight = "1.0"
+            },
+            onCreateClique = { name, weight ->
+                cliqueViewModel.createClique(name, weight)
+                showCreateCliqueDialog = false
+                cliqueName = ""
+                cliqueWeight = "1.0"
+            }
+        )
+    }
+
 
     // Create Starting Node Dialog
     if (showCreateStartingNodeDialog) {
@@ -335,7 +401,7 @@ private fun ConfigChip(text: String) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun SearchSection(
     searchText: String,
@@ -355,7 +421,7 @@ private fun SearchSection(
         OutlinedTextField(
             value = searchText,
             onValueChange = onSearchTextChange,
-            label = { Text("Search nodes, connectors, and edges") },
+            label = { Text("Search nodes, connectors, edges, and cliques") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
             trailingIcon = {
                 if (searchText.isNotEmpty()) {
@@ -369,8 +435,9 @@ private fun SearchSection(
         )
         
         // Filter chips
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             SearchFilter.values().forEach { filter ->
                 FilterChip(
@@ -387,7 +454,8 @@ private fun SearchSection(
 private fun SearchResultItem(
     result: SearchResult,
     onNavigateToNode: (Long, Long) -> Unit,
-    onNavigateToConnector: (Long) -> Unit
+    onNavigateToConnector: (Long) -> Unit,
+    onNavigateToClique: (Long) -> Unit
 ) {
     when (result) {
         is SearchResult.NodeResult -> {
@@ -524,6 +592,46 @@ private fun SearchResultItem(
                 }
             }
         }
+        
+        is SearchResult.CliqueResult -> {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToClique(result.cliqueWithNodes.clique.id) }
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = result.cliqueWithNodes.clique.name,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Text(
+                                text = "Clique",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Nodes: ${result.cliqueWithNodes.nodes.size}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -531,7 +639,8 @@ enum class SearchFilter(val displayName: String) {
     ALL("All"),
     NODES("Nodes"),
     CONNECTORS("Connectors"),
-    EDGES("Edges")
+    EDGES("Edges"),
+    CLIQUES("Cliques")
 }
 
 sealed class SearchResult {
@@ -544,7 +653,175 @@ sealed class SearchResult {
         val fromConnector: Connector?,
         val toConnector: Connector?
     ) : SearchResult()
+    data class CliqueResult(val cliqueWithNodes: CliqueWithNodes) : SearchResult()
 }
+
+@Composable
+private fun CliquesSection(
+    cliques: List<CliqueWithNodes>,
+    graph: FullGraph,
+    onCreateClique: () -> Unit,
+    onNavigateToClique: (Long) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Cliques",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Button(
+                    onClick = onCreateClique
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Create clique")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Create Clique")
+                }
+            }
+            
+            if (cliques.isEmpty()) {
+                Text(
+                    text = "No cliques created yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                cliques.forEach { cliqueWithNodes ->
+                    CliqueItem(
+                        cliqueWithNodes = cliqueWithNodes,
+                        hasEdgeWeights = graph.hasEdgeWeights,
+                        onNavigateToClique = { onNavigateToClique(cliqueWithNodes.clique.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CliqueItem(
+    cliqueWithNodes: CliqueWithNodes,
+    hasEdgeWeights: Boolean,
+    onNavigateToClique: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        onClick = onNavigateToClique
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = cliqueWithNodes.clique.name,
+                style = MaterialTheme.typography.titleSmall
+            )
+            if (hasEdgeWeights && cliqueWithNodes.clique.edgeWeight != 1.0) {
+                Text(
+                    text = "Weight: ${cliqueWithNodes.clique.edgeWeight}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Text(
+                text = "Nodes: ${cliqueWithNodes.nodes.size}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun CreateCliqueDialog(
+    cliqueName: String,
+    cliqueWeight: String,
+    hasEdgeWeights: Boolean,
+    onCliqueNameChange: (String) -> Unit,
+    onCliqueWeightChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onCreateClique: (String, Double) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Create New Clique",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                
+                OutlinedTextField(
+                    value = cliqueName,
+                    onValueChange = onCliqueNameChange,
+                    label = { Text("Clique Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                if (hasEdgeWeights) {
+                    OutlinedTextField(
+                        value = cliqueWeight,
+                        onValueChange = onCliqueWeightChange,
+                        label = { Text("Edge Weight") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = {
+                            val weight = if (hasEdgeWeights) {
+                                cliqueWeight.toDoubleOrNull() ?: 1.0
+                            } else {
+                                1.0
+                            }
+                            onCreateClique(cliqueName.trim(), weight)
+                        },
+                        enabled = cliqueName.isNotBlank()
+                    ) {
+                        Text("Create")
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun CreateStartingNodeDialog(

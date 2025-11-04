@@ -1,6 +1,7 @@
 package app.pmsoft.graphwalker.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -17,9 +18,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import app.pmsoft.graphwalker.data.GraphWalkerDatabase
+import app.pmsoft.graphwalker.data.entity.Clique
 import app.pmsoft.graphwalker.data.entity.Connector
 import app.pmsoft.graphwalker.data.model.FullGraph
+import app.pmsoft.graphwalker.data.model.NodeWithCliques
 import app.pmsoft.graphwalker.repository.GraphRepository
 import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModel
 import app.pmsoft.graphwalker.ui.viewmodel.ConnectorViewModelFactory
@@ -34,7 +40,8 @@ fun NodeView(
     onNavigateBack: () -> Unit,
     onNavigateToConnector: (Long) -> Unit = {},
     onNavigateToAddEdge: (Long) -> Unit = {},
-    onNavigateToGraphOverview: () -> Unit = {}
+    onNavigateToGraphOverview: () -> Unit = {},
+    onNavigateToClique: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -42,7 +49,8 @@ fun NodeView(
         database.graphDao(),
         database.nodeDao(),
         database.connectorDao(),
-        database.edgeDao()
+        database.edgeDao(),
+        database.cliqueDao()
     )
     // Use targetNodeId if provided, otherwise use the starting node
     val nodeIdForViewModel = targetNodeId ?: fullGraph.startingNode?.id ?: fullGraph.id
@@ -62,6 +70,10 @@ fun NodeView(
     val connectors by viewModel.connectors.collectAsState()
     val edgeCounts by viewModel.edgeCounts.collectAsState()
     val viewModelFullGraph by viewModel.fullGraph.collectAsState()
+    
+    // Clique-related flows
+    val nodeWithCliques by repository.getNodeWithCliques(nodeIdForViewModel).collectAsState(initial = null)
+    val allCliques by repository.getCliquesByGraphId(fullGraph.id).collectAsState(initial = emptyList())
 
     // Determine which node to display: targetNodeId takes precedence over starting node
     val currentNode = remember(viewModelFullGraph, targetNodeId) {
@@ -176,6 +188,29 @@ fun NodeView(
                         onNavigateToAddEdge = onNavigateToAddEdge
                     )
                 }
+                
+                // Cliques Section
+                CliquesSection(
+                    nodeWithCliques = nodeWithCliques,
+                    allCliques = allCliques,
+                    onToggleCliqueMembership = { clique, isMember ->
+                        CoroutineScope(Dispatchers.IO).launch {
+                            if (isMember) {
+                                // Add node to clique
+                                repository.insertCliqueNodeCrossRef(
+                                    app.pmsoft.graphwalker.data.entity.CliqueNodeCrossRef(
+                                        cliqueId = clique.id,
+                                        nodeId = currentNode.id
+                                    )
+                                )
+                            } else {
+                                // Remove node from clique
+                                repository.removeNodeFromClique(clique.id, currentNode.id)
+                            }
+                        }
+                    },
+                    onNavigateToClique = onNavigateToClique
+                )
             }
         } else {
             Box(
@@ -511,6 +546,90 @@ fun ConnectorItem(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun CliquesSection(
+    nodeWithCliques: NodeWithCliques?,
+    allCliques: List<Clique>,
+    onToggleCliqueMembership: (Clique, Boolean) -> Unit,
+    onNavigateToClique: (Long) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Cliques",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        if (allCliques.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No cliques created in this graph yet.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            allCliques.forEach { clique ->
+                CliqueItem(
+                    clique = clique,
+                    isChecked = nodeWithCliques?.cliques?.any { it.id == clique.id } ?: false,
+                    onToggleCliqueMembership = onToggleCliqueMembership,
+                    onNavigateToClique = onNavigateToClique
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CliqueItem(
+    clique: Clique,
+    isChecked: Boolean,
+    onToggleCliqueMembership: (Clique, Boolean) -> Unit,
+    onNavigateToClique: (Long) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { onNavigateToClique(clique.id) }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isChecked,
+                onCheckedChange = { onToggleCliqueMembership(clique, it) }
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = clique.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (clique.edgeWeight != 1.0) {
+                    Text(
+                        text = "Weight: ${clique.edgeWeight}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

@@ -51,6 +51,9 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToConnector = { connectorId ->
                     navController.navigate("connector_view/$connectorId")
+                },
+                onNavigateToClique = { cliqueId ->
+                    navController.navigate("clique_view/$cliqueId")
                 }
             )
         }
@@ -69,6 +72,9 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToGraphOverview = {
                     navController.popBackStack("graph_view/$graphId", inclusive = false)
+                },
+                onNavigateToClique = { cliqueId ->
+                    navController.navigate("clique_view/$cliqueId")
                 }
             )
         }
@@ -89,6 +95,9 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToGraphOverview = {
                     navController.popBackStack("graph_view/$graphId", inclusive = false)
+                },
+                onNavigateToClique = { cliqueId ->
+                    navController.navigate("clique_view/$cliqueId")
                 }
             )
         }
@@ -124,6 +133,21 @@ fun GraphWalkerApp() {
                 }
             )
         }
+        composable("clique_view/{cliqueId}") { backStackEntry ->
+            val cliqueId = backStackEntry.arguments?.getString("cliqueId")?.toLong() ?: return@composable
+            CliqueScreen(
+                cliqueId = cliqueId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToNode = { graphId, nodeId ->
+                    navController.navigate("node_view/$graphId/$nodeId")
+                },
+                onNavigateToGraphOverview = {
+                    navController.popBackStack("graph_list", inclusive = false)
+                }
+            )
+        }
     }
 }
 
@@ -138,7 +162,8 @@ fun GraphListScreen(
         database.graphDao(),
         database.nodeDao(),
         database.connectorDao(),
-        database.edgeDao()
+        database.edgeDao(),
+        database.cliqueDao()
     )
     val viewModel: GraphListViewModel = viewModel(
         factory = GraphListViewModelFactory(repository)
@@ -399,7 +424,8 @@ fun NodeViewScreen(
     onNavigateBack: () -> Unit,
     onNavigateToConnector: (Long) -> Unit = {},
     onNavigateToAddEdge: (Long) -> Unit = {},
-    onNavigateToGraphOverview: () -> Unit = {}
+    onNavigateToGraphOverview: () -> Unit = {},
+    onNavigateToClique: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -407,7 +433,8 @@ fun NodeViewScreen(
         database.graphDao(),
         database.nodeDao(),
         database.connectorDao(),
-        database.edgeDao()
+        database.edgeDao(),
+        database.cliqueDao()
     )
 
     val fullGraph by repository.getFullGraphById(graphId).collectAsState(initial = null)
@@ -419,7 +446,8 @@ fun NodeViewScreen(
             onNavigateBack = onNavigateBack,
             onNavigateToConnector = onNavigateToConnector,
             onNavigateToAddEdge = onNavigateToAddEdge,
-            onNavigateToGraphOverview = onNavigateToGraphOverview
+            onNavigateToGraphOverview = onNavigateToGraphOverview,
+            onNavigateToClique = onNavigateToClique
         )
     } ?: run {
         Box(
