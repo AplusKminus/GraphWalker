@@ -15,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -502,6 +504,12 @@ fun CreateNodeConnectorDialog(
     onDismiss: () -> Unit,
     onCreateNodeConnector: (String, String) -> Unit
 ) {
+    val focusRequester = remember { FocusRequester() }
+    
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+    
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -523,7 +531,9 @@ fun CreateNodeConnectorDialog(
                         value = nodeName,
                         onValueChange = onNodeNameChange,
                         label = { Text("Node Name") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
                         singleLine = true
                     )
                 }
@@ -532,7 +542,9 @@ fun CreateNodeConnectorDialog(
                     value = connectorName,
                     onValueChange = onConnectorNameChange,
                     label = { Text("Connector Name") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (selectedNodeName != null) Modifier.focusRequester(focusRequester) else Modifier),
                     singleLine = true
                 )
                 
