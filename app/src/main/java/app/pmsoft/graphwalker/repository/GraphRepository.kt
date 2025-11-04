@@ -58,6 +58,8 @@ class GraphRepository(
     
     fun getAllConnectors(): Flow<List<Connector>> = connectorDao.getAllConnectors()
     
+    fun getConnectorsByGraphId(graphId: Long): Flow<List<Connector>> = connectorDao.getConnectorsByGraphId(graphId)
+    
     suspend fun insertConnector(connector: Connector): Long = connectorDao.insertConnector(connector)
     
     suspend fun updateConnector(connector: Connector) = connectorDao.updateConnector(connector)

@@ -64,31 +64,51 @@ fun AddEdgeScreen(
     var newNodeName by remember { mutableStateOf("") }
     var newConnectorName by remember { mutableStateOf("") }
     
-    val allConnectors by repository.getAllConnectors().collectAsState(initial = emptyList())
-    val allNodes by repository.getAllNodes().collectAsState(initial = emptyList())
     val currentNode by viewModel.currentNode.collectAsState()
+    val currentGraphId = currentNode?.graphId
+    
+    val allConnectors by if (currentGraphId != null) {
+        repository.getConnectorsByGraphId(currentGraphId).collectAsState(initial = emptyList())
+    } else {
+        repository.getAllConnectors().collectAsState(initial = emptyList())
+    }
+    val allNodes by if (currentGraphId != null) {
+        repository.getNodesByGraphId(currentGraphId).collectAsState(initial = emptyList())
+    } else {
+        repository.getAllNodes().collectAsState(initial = emptyList())
+    }
     
     
     // Filtered results based on current state
-    val filteredConnectors = remember(allConnectors, allNodes, searchText, selectedNode) {
-        if (searchText.isBlank()) {
+    val filteredConnectors = remember(allConnectors, allNodes, searchText, selectedNode, selectedConnector) {
+        if (selectedConnector != null) {
             emptyList()
         } else {
             if (selectedNode != null) {
-                // Case 2: Node selected, show only connectors for that node
-                allConnectors.filter { it.nodeId == selectedNode!!.id && it.name.contains(searchText, ignoreCase = true) }
+                // Node selected, show all connectors for that node, filtered by search text if provided
+                val nodeConnectors = allConnectors.filter { it.nodeId == selectedNode!!.id }
+                if (searchText.isBlank()) {
+                    nodeConnectors
+                } else {
+                    nodeConnectors.filter { it.name.contains(searchText, ignoreCase = true) }
+                }
             } else {
-                // Show matching connectors
-                allConnectors.filter { connector ->
-                    connector.name.contains(searchText, ignoreCase = true) ||
-                    allNodes.find { it.id == connector.nodeId }?.name?.contains(searchText, ignoreCase = true) == true
+                // No node selected, only show results if search text is provided
+                if (searchText.isBlank()) {
+                    emptyList()
+                } else {
+                    // Show matching connectors
+                    allConnectors.filter { connector ->
+                        connector.name.contains(searchText, ignoreCase = true) ||
+                        allNodes.find { it.id == connector.nodeId }?.name?.contains(searchText, ignoreCase = true) == true
+                    }
                 }
             }
         }
     }
     
-    val filteredNodes = remember(allNodes, searchText, selectedNode) {
-        if (searchText.isBlank() || selectedNode != null) {
+    val filteredNodes = remember(allNodes, searchText, selectedNode, selectedConnector) {
+        if (searchText.isBlank() || selectedNode != null || selectedConnector != null) {
             emptyList()
         } else {
             allNodes.filter { it.name.contains(searchText, ignoreCase = true) }
@@ -148,13 +168,17 @@ fun AddEdgeScreen(
             if (graph?.isDirected == true) {
                 item {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { bidirectional = !bidirectional },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Checkbox(
-                            checked = bidirectional,
-                            onCheckedChange = { bidirectional = it }
-                        )
                         Text("Bidirectional")
+                        Switch(
+                            checked = bidirectional,
+                            onCheckedChange = { bidirectional = it },
+                        )
                     }
                 }
             }
@@ -166,9 +190,72 @@ fun AddEdgeScreen(
                 )
             }
             
-            // Case 1: Selected connector
-            if (selectedConnector != null) {
-                item {
+            // Node selection card (always visible)
+            item {
+                if (selectedNode != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = selectedNode!!.name,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Selected Node",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            IconButton(onClick = { 
+                                selectedNode = null
+                                selectedConnector = null // Remove connector when node is removed
+                                searchText = ""
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Remove node selection")
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showNodeCreation = true }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Create new",
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Create New Node & Connector",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // Connector selection card (always visible)
+            item {
+                if (selectedConnector != null) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -189,48 +276,55 @@ fun AddEdgeScreen(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "Node: ${allNodes.find { it.id == selectedConnector!!.nodeId }?.name ?: "Unknown"}",
+                                    text = "Selected Connector",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                             IconButton(onClick = { selectedConnector = null }) {
-                                Icon(Icons.Default.Close, contentDescription = "Remove selection")
+                                Icon(Icons.Default.Close, contentDescription = "Remove connector selection")
                             }
                         }
                     }
-                }
-            }
-            
-            // Case 2: Selected node
-            if (selectedNode != null) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
+                } else if (selectedNode != null) {
+                    OutlinedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showNodeCreation = true }
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
-                                Text(
-                                    text = selectedNode!!.name,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = "Node selected",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            IconButton(onClick = { 
-                                selectedNode = null
-                                searchText = ""
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = "Remove selection")
-                            }
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Create connector",
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Create Connector in ${selectedNode!!.name}",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+                } else {
+                    OutlinedCard(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Create or select a node before choosing a connector",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
                         }
                     }
                 }
@@ -254,22 +348,9 @@ fun AddEdgeScreen(
                 }
             }
             
-            // Case 2: Create connector button when node is selected
-            if (selectedNode != null) {
-                item {
-                    OutlinedButton(
-                        onClick = { showNodeCreation = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Create connector")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Create Connector in ${selectedNode!!.name}")
-                    }
-                }
-            }
             
             // Search results - Connectors
-            if (searchText.isNotBlank() && selectedConnector == null) {
+            if (selectedConnector == null && filteredConnectors.isNotEmpty()) {
                 items(filteredConnectors) { connector ->
                     val node = allNodes.find { it.id == connector.nodeId }
                     Card(
@@ -277,6 +358,7 @@ fun AddEdgeScreen(
                             .fillMaxWidth()
                             .clickable { 
                                 selectedConnector = connector
+                                selectedNode = node // Also set the selected node
                                 searchText = ""
                             }
                     ) {
@@ -325,19 +407,6 @@ fun AddEdgeScreen(
                 }
             }
             
-            // Case 3: Create new node & connector button
-            if (selectedConnector == null && selectedNode == null) {
-                item {
-                    OutlinedButton(
-                        onClick = { showNodeCreation = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Create new")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Create New Node & Connector")
-                    }
-                }
-            }
             
             // Create edge button
             if (selectedConnector != null) {
@@ -385,22 +454,33 @@ fun AddEdgeScreen(
                 newConnectorName = ""
             },
             onCreateNodeConnector = { nodeName, connectorName ->
-                val targetGraphId = if (selectedNode != null) {
-                    selectedNode!!.graphId
-                } else {
-                    currentNode?.graphId
-                }
-                
-                targetGraphId?.let { graphId ->
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val newConnectorId = viewModel.createNodeAndConnector(nodeName, connectorName, graphId)
+                CoroutineScope(Dispatchers.IO).launch {
+                    val result = if (selectedNode != null) {
+                        // Case 2: Create connector for existing node
+                        val newConnId = viewModel.createConnectorForNode(selectedNode!!.id, connectorName)
+                        Pair(newConnId, selectedNode!!.id)
+                    } else {
+                        // Case 3: Create new node and connector
+                        val targetGraphId = currentNode?.graphId
+                        if (targetGraphId != null) {
+                            viewModel.createNodeAndConnectorWithNodeId(nodeName, connectorName, targetGraphId)
+                        } else {
+                            Pair(-1L, -1L)
+                        }
+                    }
+                    
+                    val (newConnectorId, nodeId) = result
+                    if (newConnectorId != -1L) {
                         // Use a delay to allow reactive flows to update, then auto-select
-                        delay(100)
+                        delay(200)
                         launch(Dispatchers.Main) {
-                            // Auto-select the newly created connector for case 3
-                            if (selectedNode == null) {
-                                selectedConnector = allConnectors.find { it.id == newConnectorId }
-                            }
+                            // Auto-select the newly created connector by ID
+                            val newConnector = Connector(
+                                id = newConnectorId,
+                                nodeId = nodeId,
+                                name = connectorName
+                            )
+                            selectedConnector = newConnector
                         }
                     }
                 }

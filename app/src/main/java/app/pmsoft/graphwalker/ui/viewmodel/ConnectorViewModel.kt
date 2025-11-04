@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.pmsoft.graphwalker.data.entity.Connector
 import app.pmsoft.graphwalker.data.entity.Edge
-import app.pmsoft.graphwalker.data.entity.Graph
 import app.pmsoft.graphwalker.data.entity.Node
 import app.pmsoft.graphwalker.repository.GraphRepository
 import kotlinx.coroutines.flow.StateFlow
@@ -14,9 +13,9 @@ import kotlinx.coroutines.launch
 
 class ConnectorViewModel(
     private val repository: GraphRepository,
-    private val connectorId: Long
+    private val connectorId: Long,
 ) : ViewModel() {
-    
+
     val connector = repository.getConnectorById(connectorId)
         .stateIn(
             scope = viewModelScope,
@@ -35,7 +34,7 @@ class ConnectorViewModel(
             started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
             initialValue = null
         )
-    
+
     val graph = currentNode
         .combine(repository.getAllGraphs()) { node, allGraphs ->
             if (node != null) {
@@ -71,7 +70,7 @@ class ConnectorViewModel(
     ) { edgeList, allConnectors, allNodes ->
         val connectorMap = allConnectors.associateBy { it.id }
         val nodeMap = allNodes.associateBy { it.id }
-        
+
         edgeList.associate { edge ->
             val otherConnectorId = if (edge.fromConnectorId == connectorId) {
                 edge.toConnectorId
@@ -80,13 +79,13 @@ class ConnectorViewModel(
             }
             val connector = connectorMap[otherConnectorId]
             val node = connector?.let { nodeMap[it.nodeId] }
-            
+
             val displayName = if (connector != null && node != null) {
                 "${node.name} (${connector.name})"
             } else {
                 connector?.name ?: "Unknown"
             }
-            
+
             edge.id to displayName
         }
     }
@@ -101,7 +100,7 @@ class ConnectorViewModel(
         repository.getAllConnectors()
     ) { edgeList, allConnectors ->
         val connectorMap = allConnectors.associateBy { it.id }
-        
+
         edgeList.associate { edge ->
             val otherConnectorId = if (edge.fromConnectorId == connectorId) {
                 edge.toConnectorId
@@ -131,12 +130,20 @@ class ConnectorViewModel(
         }
     }
 
-    suspend fun createNodeAndConnector(nodeName: String, connectorName: String, graphId: Long): Long {
+    suspend fun createNodeAndConnectorWithNodeId(
+        nodeName: String,
+        connectorName: String,
+        graphId: Long,
+    ): Pair<Long, Long> {
         val nodeId = repository.insertNode(Node(graphId = graphId, name = nodeName))
         val connectorId = repository.insertConnector(Connector(nodeId = nodeId, name = connectorName))
-        return connectorId
+        return Pair(connectorId, nodeId)
     }
-    
+
+    suspend fun createConnectorForNode(nodeId: Long, connectorName: String): Long {
+        return repository.insertConnector(Connector(nodeId = nodeId, name = connectorName))
+    }
+
     fun updateConnectorName(@Suppress("UNUSED_PARAMETER") connectorId: Long, newName: String) {
         viewModelScope.launch {
             val currentConnector = connector.value
@@ -146,7 +153,7 @@ class ConnectorViewModel(
             }
         }
     }
-    
+
     fun deleteConnector(@Suppress("UNUSED_PARAMETER") connectorId: Long) {
         viewModelScope.launch {
             val currentConnector = connector.value
