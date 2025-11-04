@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -45,7 +44,8 @@ fun GraphScreen(
     onNavigateBack: () -> Unit,
     onNavigateToNode: (Long, Long?) -> Unit,
     onNavigateToConnector: (Long) -> Unit,
-    onNavigateToClique: (Long) -> Unit
+    onNavigateToClique: (Long) -> Unit,
+    onNavigateToUnconnectedConnectors: (Long) -> Unit
 ) {
     val context = LocalContext.current
     val database = GraphWalkerDatabase.getDatabase(context)
@@ -225,10 +225,6 @@ fun GraphScreen(
                         )
                     }
 
-                    // Graph Configuration Section
-                    item {
-                        GraphConfigSection(graph = graph)
-                    }
 
                     // Cliques Section
                     item {
@@ -237,6 +233,16 @@ fun GraphScreen(
                             graph = graph,
                             onCreateClique = { showCreateCliqueDialog = true },
                             onNavigateToClique = onNavigateToClique
+                        )
+                    }
+
+                    // Analysis Section
+                    item {
+                        AnalysisSection(
+                            graph = graph,
+                            onNavigateToUnconnectedConnectors = {
+                                onNavigateToUnconnectedConnectors(graphId)
+                            }
                         )
                     }
                 }
@@ -446,45 +452,6 @@ private fun StartingNodeSection(
     }
 }
 
-@Composable
-private fun GraphConfigSection(graph: FullGraph) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "Graph Configuration",
-            style = MaterialTheme.typography.headlineSmall
-        )
-        
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            ConfigChip(text = if (graph.isDirected) "Directed" else "Undirected")
-            if (graph.hasEdgeWeights) ConfigChip(text = "Weighted")
-            if (graph.hasEdgeLabels) ConfigChip(text = "Labeled")
-            if (graph.hasConnectors) ConfigChip(text = "Connectors")
-        }
-        
-        Text(
-            text = "Nodes: ${graph.nodes.size}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun ConfigChip(text: String) {
-    Card {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -668,6 +635,31 @@ private fun CliquesSection(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text("Add Clique")
+        }
+    }
+}
+
+@Composable
+private fun AnalysisSection(
+    graph: FullGraph,
+    onNavigateToUnconnectedConnectors: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Analysis",
+            style = MaterialTheme.typography.headlineSmall
+        )
+        
+        if (graph.hasConnectors) {
+            OutlinedButton(
+                onClick = onNavigateToUnconnectedConnectors,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Find unconnected connectors")
+            }
         }
     }
 }

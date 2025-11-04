@@ -55,6 +55,9 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToClique = { cliqueId ->
                     navController.navigate("clique_view/$cliqueId")
+                },
+                onNavigateToUnconnectedConnectors = { graphIdForConnectors ->
+                    navController.navigate("unconnected_connectors/$graphIdForConnectors")
                 }
             )
         }
@@ -146,6 +149,18 @@ fun GraphWalkerApp() {
                 },
                 onNavigateToGraphOverview = {
                     navController.popBackStack("graph_list", inclusive = false)
+                }
+            )
+        }
+        composable("unconnected_connectors/{graphId}") { backStackEntry ->
+            val graphId = backStackEntry.arguments?.getString("graphId")?.toLong() ?: return@composable
+            UnconnectedConnectorsScreen(
+                graphId = graphId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToConnector = { connectorId ->
+                    navController.navigate("connector_view/$connectorId")
                 }
             )
         }
