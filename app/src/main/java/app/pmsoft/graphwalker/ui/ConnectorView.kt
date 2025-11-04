@@ -1,8 +1,6 @@
 package app.pmsoft.graphwalker.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -24,7 +22,7 @@ fun ConnectorView(
     triggerEditDelete: Boolean,
     onEditDeleteHandled: () -> Unit,
     applyContentPadding: Boolean = true,
-    onNavigateToAddEdge: (Long) -> Unit = {}
+    onNavigateToAddEdge: (Long) -> Unit = {},
 ) {
     val graph by viewModel.graph.collectAsState()
     val connector by viewModel.connector.collectAsState()
@@ -35,7 +33,7 @@ fun ConnectorView(
     var showEditDeleteDialog by remember { mutableStateOf(false) }
     var newConnectorName by remember { mutableStateOf("") }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
-    
+
     // Handle edit/delete trigger from parent
     LaunchedEffect(triggerEditDelete) {
         if (triggerEditDelete) {
@@ -44,71 +42,63 @@ fun ConnectorView(
             onEditDeleteHandled()
         }
     }
-    
+
     if (connector != null) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = if (applyContentPadding) PaddingValues(16.dp) else PaddingValues(0.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(paddingValues)
+                .then(if (applyContentPadding) Modifier.padding(16.dp) else Modifier),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item {
-                Text(
-                    text = "Connected Edges",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 8.dp)
+            Text(
+                text = "Connected Edges",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            edges.forEach { edge ->
+                EdgeItem(
+                    edge = edge,
+                    connectedConnectorName = connectedConnectors[edge.id] ?: "Unknown",
+                    currentConnectorId = connectorId,
+                    showWeight = graph?.hasEdgeWeights == true,
+                    onNavigateToNode = {
+                        val targetNodeId = targetNodeIds[edge.id]
+                        val graphId = currentNode?.graphId
+                        if (targetNodeId != null && targetNodeId != -1L && graphId != null) {
+                            onNavigateToNode(targetNodeId)
+                        }
+                    },
                 )
             }
 
-            if (edges.isNotEmpty()) {
-                items(edges) { edge ->
-                    EdgeItem(
-                        edge = edge,
-                        connectedConnectorName = connectedConnectors[edge.id] ?: "Unknown",
-                        currentConnectorId = connectorId,
-                        showWeight = graph?.hasEdgeWeights == true,
-                        onNavigateToNode = {
-                            val targetNodeId = targetNodeIds[edge.id]
-                            val graphId = currentNode?.graphId
-                            if (targetNodeId != null && targetNodeId != -1L && graphId != null) {
-                                onNavigateToNode(targetNodeId)
-                            }
-                        }
-                    )
-                }
+            OutlinedButton(
+                onClick = { onNavigateToAddEdge(connectorId) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add edge",
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Add Edge")
             }
+        }
 
-            item {
-                OutlinedButton(
-                    onClick = { onNavigateToAddEdge(connectorId) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Add edge",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Edge")
-                }
-            }
-
-            if (edges.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No connected edges yet. Tap 'Add Edge' to create one.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+        if (edges.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "No connected edges yet. Tap 'Add Edge' to create one.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     } else {
@@ -121,10 +111,10 @@ fun ConnectorView(
             CircularProgressIndicator()
         }
     }
-    
+
     // Combined edit/delete dialog
     if (showEditDeleteDialog) {
-        Dialog(onDismissRequest = { 
+        Dialog(onDismissRequest = {
             showEditDeleteDialog = false
             newConnectorName = ""
             showDeleteConfirmation = false
@@ -145,7 +135,7 @@ fun ConnectorView(
                             text = "Edit Connector",
                             style = MaterialTheme.typography.headlineSmall
                         )
-                        
+
                         OutlinedTextField(
                             value = newConnectorName,
                             onValueChange = { newConnectorName = it },
@@ -153,7 +143,7 @@ fun ConnectorView(
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
-                        
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -167,7 +157,7 @@ fun ConnectorView(
                             ) {
                                 Text("Delete")
                             }
-                            
+
                             Row {
                                 TextButton(
                                     onClick = {
@@ -177,9 +167,9 @@ fun ConnectorView(
                                 ) {
                                     Text("Cancel")
                                 }
-                                
+
                                 Spacer(modifier = Modifier.width(8.dp))
-                                
+
                                 Button(
                                     onClick = {
                                         val currentConnector = connector
@@ -201,12 +191,12 @@ fun ConnectorView(
                             text = "Delete Connector",
                             style = MaterialTheme.typography.headlineSmall
                         )
-                        
+
                         Text(
                             text = "Are you sure you want to delete '${connector?.name}'? This will also delete all associated edges.",
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End,
@@ -217,9 +207,9 @@ fun ConnectorView(
                             ) {
                                 Text("Cancel")
                             }
-                            
+
                             Spacer(modifier = Modifier.width(8.dp))
-                            
+
                             Button(
                                 onClick = {
                                     val currentConnector = connector
@@ -251,7 +241,7 @@ fun EdgeItem(
     connectedConnectorName: String,
     currentConnectorId: Long,
     showWeight: Boolean = false,
-    onNavigateToNode: () -> Unit = {}
+    onNavigateToNode: () -> Unit = {},
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
