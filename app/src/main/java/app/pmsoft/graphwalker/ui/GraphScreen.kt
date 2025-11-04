@@ -26,7 +26,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import app.pmsoft.graphwalker.data.GraphWalkerDatabase
-import app.pmsoft.graphwalker.data.entity.Clique
 import app.pmsoft.graphwalker.data.entity.Connector
 import app.pmsoft.graphwalker.data.entity.Edge
 import app.pmsoft.graphwalker.data.entity.Node
@@ -190,7 +189,8 @@ fun GraphScreen(
                         searchText = searchText,
                         onSearchTextChange = { searchText = it },
                         selectedFilter = selectedFilter,
-                        onFilterChange = { selectedFilter = it }
+                        onFilterChange = { selectedFilter = it },
+                        graph = graph
                     )
                 }
 
@@ -407,7 +407,8 @@ private fun SearchSection(
     searchText: String,
     onSearchTextChange: (String) -> Unit,
     selectedFilter: SearchFilter,
-    onFilterChange: (SearchFilter) -> Unit
+    onFilterChange: (SearchFilter) -> Unit,
+    graph: FullGraph
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -439,12 +440,22 @@ private fun SearchSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            SearchFilter.values().forEach { filter ->
-                FilterChip(
-                    selected = selectedFilter == filter,
-                    onClick = { onFilterChange(filter) },
-                    label = { Text(filter.displayName) }
-                )
+            SearchFilter.entries.forEach { filter ->
+                val shouldShow = when (filter) {
+                    SearchFilter.ALL -> true
+                    SearchFilter.NODES -> true // Nodes are always present
+                    SearchFilter.CONNECTORS -> graph.hasConnectors
+                    SearchFilter.EDGES -> graph.hasEdgeLabels // Only show if edges have labels to search
+                    SearchFilter.CLIQUES -> true // Cliques can be created regardless of other features
+                }
+                
+                if (shouldShow) {
+                    FilterChip(
+                        selected = selectedFilter == filter,
+                        onClick = { onFilterChange(filter) },
+                        label = { Text(filter.displayName) }
+                    )
+                }
             }
         }
     }
@@ -459,178 +470,57 @@ private fun SearchResultItem(
 ) {
     when (result) {
         is SearchResult.NodeResult -> {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToNode(result.node.graphId, result.node.id) }
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = result.node.name,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        ) {
-                            Text(
-                                text = "Node",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                    if (result.node.tags.isNotEmpty()) {
-                        Text(
-                            text = "Tags: ${result.node.tags.joinToString(", ")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            val contextInfo = buildList {
+                if (result.node.tags.isNotEmpty()) {
+                    add("Tags: ${result.node.tags.joinToString(", ")}")
                 }
             }
+            SearchResultCard(
+                title = result.node.name,
+                type = "Node",
+                contextInfo = contextInfo,
+                onClick = { onNavigateToNode(result.node.graphId, result.node.id) }
+            )
         }
         
         is SearchResult.ConnectorResult -> {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToConnector(result.connector.id) }
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = result.connector.name.ifBlank { "(Unnamed connector)" },
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            )
-                        ) {
-                            Text(
-                                text = "Connector",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                    Text(
-                        text = "In node: ${result.node?.name ?: "Unknown"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            SearchResultCard(
+                title = result.connector.name.ifBlank { "(Unnamed connector)" },
+                type = "Connector",
+                contextInfo = listOf("In node: ${result.node?.name ?: "Unknown"}"),
+                onClick = { onNavigateToConnector(result.connector.id) }
+            )
         }
         
         is SearchResult.EdgeResult -> {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = result.edge.name.ifBlank { "(Unnamed edge)" },
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                            )
-                        ) {
-                            Text(
-                                text = "Edge",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                    
-                    val directionSymbol = if (result.edge.bidirectional) "↔" else "→"
-                    val fromNodeName = result.fromNode?.name ?: "Unknown"
-                    val toNodeName = result.toNode?.name ?: "Unknown"
-                    val fromConnectorName = result.fromConnector?.name?.let { if (it.isBlank()) "(unnamed)" else it } ?: "Unknown"
-                    val toConnectorName = result.toConnector?.name?.let { if (it.isBlank()) "(unnamed)" else it } ?: "Unknown"
-                    
-                    Text(
-                        text = "$fromNodeName:$fromConnectorName $directionSymbol $toNodeName:$toConnectorName",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    if (result.edge.weight != 1.0) {
-                        Text(
-                            text = "Weight: ${result.edge.weight}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            val directionSymbol = if (result.edge.bidirectional) "↔" else "→"
+            val fromNodeName = result.fromNode?.name ?: "Unknown"
+            val toNodeName = result.toNode?.name ?: "Unknown"
+            val fromConnectorName = result.fromConnector?.name?.let { if (it.isBlank()) "(unnamed)" else it } ?: "Unknown"
+            val toConnectorName = result.toConnector?.name?.let { if (it.isBlank()) "(unnamed)" else it } ?: "Unknown"
+            
+            val contextInfo = buildList {
+                add("$fromNodeName:$fromConnectorName $directionSymbol $toNodeName:$toConnectorName")
+                if (result.edge.weight != 1.0) {
+                    add("Weight: ${result.edge.weight}")
                 }
             }
+            
+            SearchResultCard(
+                title = result.edge.name.ifBlank { "(Unnamed edge)" },
+                type = "Edge",
+                contextInfo = contextInfo,
+                onClick = { /* Edges are not clickable in the original implementation */ }
+            )
         }
         
         is SearchResult.CliqueResult -> {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToClique(result.cliqueWithNodes.clique.id) }
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = result.cliqueWithNodes.clique.name,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Text(
-                                text = "Clique",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                    Text(
-                        text = "Nodes: ${result.cliqueWithNodes.nodes.size}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            SearchResultCard(
+                title = result.cliqueWithNodes.clique.name,
+                type = "Clique",
+                contextInfo = listOf("Nodes: ${result.cliqueWithNodes.nodes.size}"),
+                onClick = { onNavigateToClique(result.cliqueWithNodes.clique.id) }
+            )
         }
     }
 }
