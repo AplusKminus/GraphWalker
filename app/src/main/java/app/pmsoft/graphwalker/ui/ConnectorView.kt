@@ -283,9 +283,9 @@ fun EdgeItem(
                 }
 
                 val directionLabel = when {
-                    edge.bidirectional -> "↔️"
-                    edge.fromConnectorId == currentConnectorId -> "➡️"
-                    else -> "⬅️"
+                    edge.bidirectional -> "↔"
+                    edge.fromConnectorId == currentConnectorId -> "→"
+                    else -> "←"
                 }
                 Text(
                     text = "$directionLabel $connectedConnectorName",
