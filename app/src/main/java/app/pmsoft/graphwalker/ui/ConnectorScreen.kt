@@ -37,6 +37,7 @@ fun ConnectorScreen(
     )
 
     val connector by viewModel.connector.collectAsState()
+    val currentNode by viewModel.currentNode.collectAsState()
     
     var showContextMenu by remember { mutableStateOf(false) }
     var triggerEditDelete by remember { mutableStateOf(false) }
@@ -45,7 +46,19 @@ fun ConnectorScreen(
         topBar = {
             TopAppBar(
                 title = { 
-                    Text(connector?.name ?: "Connector") 
+                    Column {
+                        Text(
+                            text = currentNode?.name ?: "Node",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        if (connector != null) {
+                            Text(
+                                text = connector!!.name,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
